@@ -367,6 +367,19 @@ if [ $PERL_524 ]; then
     PERL_ARCH=$BUILD/arch/5.24
 fi
 
+# Path to Perl 5.26
+if [ -x "/usr/bin/perl5.26.0" ]; then
+    PERL_526=/usr/bin/perl5.26.0
+fi
+
+if [ $PERL_526 ]; then
+    echo "Building with Perl 5.26 at $PERL_526"
+    PERL_BIN=$PERL_526
+    # Install dir for 5.26
+    PERL_BASE=$BUILD/5.26
+    PERL_ARCH=$BUILD/arch/5.26
+fi
+
 # try to use default perl version
 if [ "$PERL_BIN" = "" ]; then
     PERL_BIN=`which perl`
@@ -400,6 +413,9 @@ if [ "$PERL_BIN" = "" ]; then
     "5.24")
 	PERL_524=$PERL_BIN
         ;;
+    "5.26")
+        PERL_526=$PERL_BIN
+        ;;
     *)
         echo "Failed to find supported Perl version for '$PERL_BIN'"
         exit
@@ -410,6 +426,8 @@ if [ "$PERL_BIN" = "" ]; then
     PERL_BASE=$BUILD/$PERL_VERSION
     PERL_ARCH=$BUILD/arch/$PERL_VERSION
 fi
+
+PERL_MINOR_VER=`echo "$PERL_BASE" | sed 's/.*\.//g'`
 
 # FreeBSD's make sucks
 if [ "$OS" = "FreeBSD" ]; then
@@ -565,7 +583,7 @@ function build {
             ;;
         
         Class::XSAccessor)
-            if [ "$PERL_516" -o "$PERL_518" -o "$PERL_520" -o "$PERL_522" -o "$PERL_524" ]; then
+            if [ $PERL_MINOR_VER -ge 16 ]; then
                 build_module Class-XSAccessor-1.18
                 cp -pR $PERL_BASE/lib/perl5/$ARCH/Class $PERL_ARCH/
             else
@@ -581,7 +599,7 @@ function build {
             ;;
         
         DBI)
-            if [ "$PERL_518" -o "$PERL_520" -o "$PERL_522" -o "$PERL_524" ]; then
+            if [ $PERL_MINOR_VER -ge 18 ]; then
                 build_module DBI-1.628
                 cp -p $PERL_BASE/lib/perl5/$ARCH/DBI.pm $PERL_ARCH/
                 cp -pR $PERL_BASE/lib/perl5/$ARCH/DBI $PERL_ARCH/
@@ -591,7 +609,7 @@ function build {
             ;;
         
         DBD::SQLite)
-            if [ "$PERL_518" -o "$PERL_520" -o "$PERL_522" -o "$PERL_524" ]; then
+            if [ $PERL_MINOR_VER -ge 18 ]; then
                 build_module DBI-1.628 "" 0
             else
                 build_module DBI-1.616 "" 0
@@ -600,7 +618,7 @@ function build {
             # build ICU, but only if it doesn't exist in the build dir,
             # because it takes so damn long on slow platforms
             if [ ! -f build/lib/libicudata_s.a ]; then
-                tar_wrapper zxvf icu4c-4_6-src.tgz
+                tar_wrapper zxvf icu4c-59_1-src.tgz
                 cd icu/source
                 if [ "$OS" = 'Darwin' ]; then
                     ICUFLAGS="$FLAGS $OSX_ARCH $OSX_FLAGS -DU_USING_ICU_NAMESPACE=0 -DU_CHARSET_IS_UTF8=1" # faster code for native UTF-8 systems
@@ -611,12 +629,16 @@ function build {
                 elif [ "$OS" = 'FreeBSD' ]; then
                     ICUFLAGS="$FLAGS -DU_USING_ICU_NAMESPACE=0"
                     ICUOS="FreeBSD"
-                    if [[ $BSD_MAJOR_VER -ge 11 ]]; then
-                        patch -p0 < ../../runConfigureICU.patch
-                    fi
                 fi
-                CFLAGS="$ICUFLAGS" CXXFLAGS="$ICUFLAGS" LDFLAGS="$FLAGS $OSX_ARCH $OSX_FLAGS" \
-                    ./runConfigureICU $ICUOS --prefix=$BUILD --enable-static --with-data-packaging=archive
+
+                if [[ "$OS" = 'FreeBSD' ]]; then
+                # This is necessary to make the ICU build script respect our /etc/make.conf specified compiler options
+                    CC="$GCC" CXX="$GXX" CPP="$GPP" CFLAGS="$ICUFLAGS" CXXFLAGS="$ICUFLAGS" LDFLAGS="$FLAGS $OSX_ARCH $OSX_FLAGS" \
+                        ./runConfigureICU $ICUOS --prefix=$BUILD --enable-static --with-data-packaging=archive
+                else
+                    CFLAGS="$ICUFLAGS" CXXFLAGS="$ICUFLAGS" LDFLAGS="$FLAGS $OSX_ARCH $OSX_FLAGS" \
+                        ./runConfigureICU $ICUOS --prefix=$BUILD --enable-static --with-data-packaging=archive
+                fi
                 $MAKE
                 if [ $? != 0 ]; then
                     echo "make failed"
@@ -629,12 +651,6 @@ function build {
 
                 # Symlink static versions of libraries
                 cd build/lib
-                if [ "$OS" = 'FreeBSD' ]; then
-                    # FreeBSD has different library names (?)
-                    ln -sf libsicudata.a libicudata.a
-                    ln -sf libsicui18n.a libicui18n.a
-                    ln -sf libsicuuc.a libicuuc.a
-                fi
             
                 ln -sf libicudata.a libicudata_s.a
                 ln -sf libicui18n.a libicui18n_s.a
@@ -643,16 +659,20 @@ function build {
             fi
             
             # Point to data directory for test suite
-            export ICU_DATA=$BUILD/share/icu/4.6
+            export ICU_DATA=$BUILD/share/icu/59.1
             
             # Replace huge data file with smaller one containing only our collations
-            rm -f $BUILD/share/icu/4.6/icudt46*.dat
-            cp -v icudt46*.dat $BUILD/share/icu/4.6
+            rm -f $BUILD/share/icu/59.1/icudt59*.dat
+            cp -v icudt59*.dat $BUILD/share/icu/59.1
             
             # Custom build for ICU support
             tar_wrapper zxvf DBD-SQLite-1.34_01.tar.gz
             cd DBD-SQLite-1.34_01
-            patch -p0 < ../DBD-SQLite-ICU.patch
+            if [[ "$OS" = 'FreeBSD' && "$BSD_MAJOR_VER" -ge 11 && "$CC_TYPE" =~ "clang" ]]; then
+                patch -p0 < ../DBD-SQLite-ICU-clang.patch
+            else
+                patch -p0 < ../DBD-SQLite-ICU.patch
+            fi
             cp -Rv ../hints .
             
             if [ $PERL_58 ]; then
@@ -680,10 +700,11 @@ function build {
                 rm -rf DBD-SQLite-1.34_01
             else
                 cd ..
-                if [ "$PERL_516" -o "$PERL_518" -o "$PERL_520" -o "$PERL_522" -o "$PERL_524" ]; then
+                if [ $PERL_MINOR_VER -ge 16 ]; then
                    build_module DBD-SQLite-1.34_01 "" 0
-                fi
-                build_module DBD-SQLite-1.34_01
+                else
+		   build_module DBD-SQLite-1.34_01
+		fi
             fi
             
             ;;
@@ -736,6 +757,13 @@ function build {
 
             tar_wrapper zxvf Image-Scale-0.11.tar.gz
             cd Image-Scale-0.11
+
+            if [[ "$OS" = "FreeBSD" && "$PERL_MINOR_VER" -ge 22 ]]; then
+                TEMP_ARCH=` $PERL_BIN -MConfig -le 'print $Config{archname}' | sed 's/gnu-//' | sed 's/^i[3456]86-/i386-/' | sed 's/armv.*?-/arm-/' `
+                mkdir -p $PERL_ARCH/$TEMP_ARCH
+                cp -Rv lib/Image $PERL_ARCH/$TEMP_ARCH/
+            fi
+
             cp -Rv ../hints .
             cd ..
             
@@ -762,7 +790,7 @@ function build {
         JSON::XS)
             build_module common-sense-2.0
             
-            if [ "$PERL_518" -o "$PERL_520" -o "$PERL_522" -o "$PERL_524" ]; then
+            if [ $PERL_MINOR_VER -ge 18 ]; then
                 build_module JSON-XS-2.34
                 cp -pR $PERL_BASE/lib/perl5/$ARCH/JSON $PERL_ARCH/
             else
@@ -792,7 +820,10 @@ function build {
             ;;
         
         YAML::LibYAML)
-            if [ "$PERL_516" -o "$PERL_518" -o "$PERL_520" -o "$PERL_522" -o "$PERL_524" ]; then
+            # Needed because LibYAML 0.35 used . in @INC (not permitted in Perl 5.26)
+            if [ $PERL_MINOR_VER -ge 26 ]; then
+                build_module YAML-LibYAML-0.65
+            elif [ $PERL_MINOR_VER -ge 16 ]; then
                 build_module YAML-LibYAML-0.35 "" 0
             else
                 build_module YAML-LibYAML-0.35
@@ -1482,7 +1513,7 @@ find $BUILD -name '*.packlist' -exec rm -f {} \;
 
 # create our directory structure
 # rsync is used to avoid copying non-binary modules or other extra stuff
-if [ "$PERL_512" -o "$PERL_514" -o "$PERL_516" -o "$PERL_518" -o "$PERL_520" -o "$PERL_522" -o "$PERL_524" ]; then
+if [ $PERL_MINOR_VER -ge 12 ]; then
     # Check for Perl using use64bitint and add -64int
     ARCH=`$PERL_BIN -MConfig -le 'print $Config{archname}' | sed 's/gnu-//' | sed 's/^i[3456]86-/i386-/' | sed 's/armv.*?-/arm-/' `
 fi
