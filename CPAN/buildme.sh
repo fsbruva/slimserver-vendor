@@ -589,7 +589,7 @@ function build {
                 cp -p $PERL_BASE/lib/perl5/$ARCH/DBI.pm $PERL_ARCH/
                 cp -pR $PERL_BASE/lib/perl5/$ARCH/DBI $PERL_ARCH/
             else
-                build_module DBI-1.616
+                build_module DBI-1.616 "" 0
             fi
             ;;
         
