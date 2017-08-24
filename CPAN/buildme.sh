@@ -96,30 +96,29 @@ GCC=gcc
 if [ "$OS" = "FreeBSD" ]; then
     BSD_MAJOR_VER=`uname -r | sed 's/\..*//g'`
     BSD_MINOR_VER=`uname -r | sed 's/.*\.//g'`
-        if [ -f "/etc/make.conf" ]; then
-           MAKE_CC=`grep CC /etc/make.conf | grep -v CCACHE | grep -v \# | sed 's#CC=##g'`
-           MAKE_CXX=`grep CXX /etc/make.conf | grep -v CCACHE | grep -v \# | sed 's#CXX=##g'`
-           MAKE_CPP=`grep CPP /etc/make.conf | grep -v CCACHE | grep -v \# | sed 's#CPP=##g'`
-        fi
-        if [[ ! -z "$MAKE_CC" ]]; then
-            GCC="$MAKE_CC"
-        elif [ $BSD_MAJOR_VER -ge 10 ]; then
-            GCC=cc
-        else
-            GCC=gcc
-        fi
-        if [[ ! -z "$MAKE_CXX" ]]; then
-            GXX="$MAKE_CXX"
-        elif [ $BSD_MAJOR_VER -ge 10 ]; then
-            GXX=c++
-        else
-            GCC=g++
-        fi
-        if [[ ! -z "$MAKE_CPP" ]]; then
-            GPP="$MAKE_CPP"
-        else
-            GPP=cpp
-        fi
+    if [ -f "/etc/make.conf" ]; then
+        MAKE_CC=`grep CC /etc/make.conf | grep -v CCACHE | grep -v \# | sed 's#CC=##g'`
+        MAKE_CXX=`grep CXX /etc/make.conf | grep -v CCACHE | grep -v \# | sed 's#CXX=##g'`
+        MAKE_CPP=`grep CPP /etc/make.conf | grep -v CCACHE | grep -v \# | sed 's#CPP=##g'`
+    fi
+    if [[ ! -z "$MAKE_CC" ]]; then
+        GCC="$MAKE_CC"
+    elif [ $BSD_MAJOR_VER -ge 10 ]; then
+        GCC=cc
+    else
+        GCC=gcc
+    fi
+    if [[ ! -z "$MAKE_CXX" ]]; then
+        GXX="$MAKE_CXX"
+    elif [ $BSD_MAJOR_VER -ge 10 ]; then
+        GXX=c++
+    else
+        GCC=g++
+    fi
+    if [[ ! -z "$MAKE_CPP" ]]; then
+        GPP="$MAKE_CPP"
+    else
+        GPP=cpp
     fi
 fi
 
@@ -604,7 +603,11 @@ function build {
             # build ICU, but only if it doesn't exist in the build dir,
             # because it takes so damn long on slow platforms
             if [ ! -f build/lib/libicudata_s.a ]; then
-                tar_wrapper zxvf icu4c-59_1-src.tgz
+                if [[ "$OS" = 'FreeBSD' &&  "$BSD_MAJOR_VER" -ge 10 ]]; then
+                    tar_wrapper zxvf icu4c-59_1-src.tgz
+                else
+                    tar_wrapper zxvf icu4c-4_6-src.tgz
+                fi
                 cd icu/source
                 if [ "$OS" = 'Darwin' ]; then
                     ICUFLAGS="$FLAGS $OSX_ARCH $OSX_FLAGS -DU_USING_ICU_NAMESPACE=0 -DU_CHARSET_IS_UTF8=1" # faster code for native UTF-8 systems
@@ -615,8 +618,10 @@ function build {
                 elif [ "$OS" = 'FreeBSD' ]; then
                     ICUFLAGS="$FLAGS -DU_USING_ICU_NAMESPACE=0"
                     ICUOS="FreeBSD"
-                    for i in ../../icu_patches/freebsd/patch-*;
-                    do patch -p0 < $i; done
+                    if [[ $BSD_MAJOR_VER -ge 10 ]]; then
+                        for i in ../../icu59_patches/freebsd/patch-*;
+                        do patch -p0 < $i; done
+                    fi
                 fi
 
                 if [[ "$OS" = 'FreeBSD' ]]; then
@@ -639,7 +644,13 @@ function build {
 
                 # Symlink static versions of libraries
                 cd build/lib
-            
+                if [[ "$OS" = 'FreeBSD' &&  "$BSD_MAJOR_VER" -lt 10 ]]; then
+                    # FreeBSD has different library names (?)
+                    ln -sf libsicudata.a libicudata.a
+                    ln -sf libsicui18n.a libicui18n.a
+                    ln -sf libsicuuc.a libicuuc.a
+                fi
+
                 ln -sf libicudata.a libicudata_s.a
                 ln -sf libicui18n.a libicui18n_s.a
                 ln -sf libicuuc.a libicuuc_s.a 
@@ -647,12 +658,21 @@ function build {
             fi
             
             # Point to data directory for test suite
-            export ICU_DATA=$BUILD/share/icu/59.1
+            if [[ "$OS" = 'FreeBSD' &&  "$BSD_MAJOR_VER" -ge 10 ]]; then
+                export ICU_DATA=$BUILD/share/icu/59.1
+            else
+                export ICU_DATA=$BUILD/share/icu/4.6
+            fi
             
             # Replace huge data file with smaller one containing only our collations
-            rm -f $BUILD/share/icu/59.1/icudt59*.dat
-            cp -v icudt59*.dat $BUILD/share/icu/59.1
-            
+            if [[ "$OS" = 'FreeBSD' &&  "$BSD_MAJOR_VER" -ge 10 ]]; then
+                rm -f $BUILD/share/icu/59.1/icudt59*.dat
+                cp -v icudt59*.dat $BUILD/share/icu/59.1
+            else
+                rm -f $BUILD/share/icu/4.6/icudt46*.dat
+                cp -v icudt46*.dat $BUILD/share/icu/4.6
+            fi
+
             # Custom build for ICU support
             tar_wrapper zxvf DBD-SQLite-1.34_01.tar.gz
             cd DBD-SQLite-1.34_01
