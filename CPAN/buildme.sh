@@ -621,12 +621,14 @@ function build {
                     if [[ $BSD_MAJOR_VER -ge 10 ]]; then
                         for i in ../../icu59_patches/freebsd/patch-*;
                         do patch -p0 < $i; done
+                    else
+                        patch -p0 < ../../icu46_runConfigureICU.patch
                     fi
                 fi
 
-                if [[ "$OS" = 'FreeBSD' ]]; then
+                if [[ "$OS" = 'FreeBSD' && "$BSD_MAJOR_VER" -ge 10 && "$CC_TYPE" =~ "clang" ]]; then
                 # This is necessary to make the ICU build script respect our /etc/make.conf specified compiler options
-                    CC="$GCC" CXX="$GXX" CPP="$GPP" CFLAGS="$ICUFLAGS" CXXFLAGS="$ICUFLAGS --std=c++0x" LDFLAGS="$FLAGS $OSX_ARCH $OSX_FLAGS" \
+                    CC="$GCC" CXX="$GXX" CPP="$GPP" CFLAGS="$ICUFLAGS" CXXFLAGS="$ICUFLAGS" LDFLAGS="$FLAGS $OSX_ARCH $OSX_FLAGS" \
                         ./runConfigureICU $ICUOS --prefix=$BUILD --enable-static --with-data-packaging=archive
                 else
                     CFLAGS="$ICUFLAGS" CXXFLAGS="$ICUFLAGS" LDFLAGS="$FLAGS $OSX_ARCH $OSX_FLAGS" \
@@ -676,7 +678,7 @@ function build {
             # Custom build for ICU support
             tar_wrapper zxvf DBD-SQLite-1.34_01.tar.gz
             cd DBD-SQLite-1.34_01
-            if [[ "$OS" = 'FreeBSD' && "$BSD_MAJOR_VER" -ge 11 && "$CC_TYPE" =~ "clang" ]]; then
+            if [[ "$OS" = 'FreeBSD' && "$BSD_MAJOR_VER" -ge 10 && "$CC_TYPE" =~ "clang" ]]; then
                 patch -p0 < ../DBD-SQLite-ICU-clang.patch
             else
                 patch -p0 < ../DBD-SQLite-ICU.patch
