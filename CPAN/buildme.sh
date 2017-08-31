@@ -1443,7 +1443,7 @@ function build_bdb {
        patch -p0 < ../db51-src_dbinc_atomic.patch
        popd
     fi
-
+    CC=$GCC \
     CFLAGS="$FLAGS $OSX_ARCH $OSX_FLAGS -O3" \
     LDFLAGS="$FLAGS $OSX_ARCH $OSX_FLAGS -O3" \
         ../dist/configure --prefix=$BUILD $MUTEX \
