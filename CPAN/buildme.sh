@@ -148,6 +148,19 @@ elif [[ "$CC_TYPE" =~ "gcc" || "$CC_TYPE" =~ "GCC" ]]; then
     CC_IS_GCC=true
 fi
 
+if [[ "$CC_IS_GCC" == true && "$CC_VERSION" -lt 40800 ]]; then
+    echo "********************************************** NOTICE **********"
+    echo "*"
+    echo "*    It looks like you're using GCC earlier than 4.8,"
+    echo "*    Cowardly choosing to use ICU 4.6, instead of 59.1."
+    echo "*    This is because modern ICU requires -std=c++11"
+    echo "*"
+    echo "* Press CTRL^C to stop the build now..."
+    echo "*****************************************************************"
+    sleep 3
+fi
+
+
 PERL_CC=`$ARCHPERL -V | grep cc=\' | sed "s#.*cc=\'##g" | sed "s#\',.*##g"`
 
 if [[ "$PERL_CC" != "$GCC" ]]; then
@@ -613,11 +626,17 @@ function build {
             else
                 build_module DBI-1.616 "" 0
             fi
+
+            # Need to figure out if we are using a compiler than can build ICU 59.1. Assuming not.
+            NEW_ICU=false
+            if [[ ( "$CC_IS_CLANG" == true && "$CC_VERSION" -ge 30300 ) || ( "$CC_IS_GCC" == true && "$CC_VERSION" -ge 40800 ) ]]; then
+                NEW_ICU=true
+            fi
             
             # build ICU, but only if it doesn't exist in the build dir,
             # because it takes so damn long on slow platforms
             if [ ! -f build/lib/libicudata_s.a ]; then
-                if [[ "$OS" = 'FreeBSD' &&  "$BSD_MAJOR_VER" -ge 10 ]]; then
+                if [[ "$NEW_ICU" == true ]]; then
                     tar_wrapper zxvf icu4c-59_1-src.tgz
                 else
                     tar_wrapper zxvf icu4c-4_6-src.tgz
@@ -632,19 +651,27 @@ function build {
                 elif [ "$OS" = 'FreeBSD' ]; then
                     ICUFLAGS="$FLAGS -DU_USING_ICU_NAMESPACE=0"
                     ICUOS="FreeBSD"
-                    if [[ $BSD_MAJOR_VER -ge 10 ]]; then
+                    if [[ "$NEW_ICU" == true ]]; then
                         for i in ../../icu59_patches/freebsd/patch-*;
                         do patch -p0 < $i; done
                     else
                         patch -p0 < ../../icu46_runConfigureICU.patch
                     fi
                 fi
-
-                if [[ "$OS" = 'FreeBSD' && "$BSD_MAJOR_VER" -ge 10 && "$CC_TYPE" =~ "clang" ]]; then
+                if [[ "$OS" == 'FreeBSD' && "$NEW_ICU" == false ]]; then
                 # This is necessary to make the ICU build script respect our /etc/make.conf specified compiler options
                     CC="$GCC" CXX="$GXX" CPP="$GPP" CFLAGS="$ICUFLAGS" CXXFLAGS="$ICUFLAGS" LDFLAGS="$FLAGS $OSX_ARCH $OSX_FLAGS" \
                         ./runConfigureICU $ICUOS --prefix=$BUILD --enable-static --with-data-packaging=archive
+                elif [[ "$OS" == 'FreeBSD' && "$NEW_ICU" == true ]]; then
+                # Respect our /etc/make.conf specified compiler options, and force -std=c++11
+                    CC="$GCC" CXX="$GXX" CPP="$GPP" CFLAGS="$ICUFLAGS -std=c99" CXXFLAGS="$ICUFLAGS -std=c++11" LDFLAGS="$FLAGS $OSX_ARCH $OSX_FLAGS" \
+                        ./runConfigureICU $ICUOS --prefix=$BUILD --enable-static --with-data-packaging=archive
+                elif [[ "$NEW_ICU" == true ]]; then
+                # Force the correct c++ standard. If you don't, then DBD::SQLite will fail all its tests.
+                    CFLAGS="$ICUFLAGS" CXXFLAGS="$ICUFLAGS --std=c++0x" LDFLAGS="$FLAGS $OSX_ARCH $OSX_FLAGS" \
+                        ./runConfigureICU $ICUOS --prefix=$BUILD --enable-static --with-data-packaging=archive
                 else
+                # We're using ICU 4.6... DON'T MESS WITH ANYTHING!
                     CFLAGS="$ICUFLAGS" CXXFLAGS="$ICUFLAGS" LDFLAGS="$FLAGS $OSX_ARCH $OSX_FLAGS" \
                         ./runConfigureICU $ICUOS --prefix=$BUILD --enable-static --with-data-packaging=archive
                 fi
@@ -660,7 +687,7 @@ function build {
 
                 # Symlink static versions of libraries
                 cd build/lib
-                if [[ "$OS" = 'FreeBSD' &&  "$BSD_MAJOR_VER" -lt 10 ]]; then
+                if [[ "$OS" = 'FreeBSD' && "$NEW_ICU" == false ]]; then
                     # FreeBSD has different library names (?)
                     ln -sf libsicudata.a libicudata.a
                     ln -sf libsicui18n.a libicui18n.a
@@ -674,14 +701,14 @@ function build {
             fi
             
             # Point to data directory for test suite
-            if [[ "$OS" = 'FreeBSD' &&  "$BSD_MAJOR_VER" -ge 10 ]]; then
+            if [[ -d $BUILD/share/icu/59.1 ]]; then
                 export ICU_DATA=$BUILD/share/icu/59.1
             else
                 export ICU_DATA=$BUILD/share/icu/4.6
             fi
             
             # Replace huge data file with smaller one containing only our collations
-            if [[ "$OS" = 'FreeBSD' &&  "$BSD_MAJOR_VER" -ge 10 ]]; then
+            if [[ -d $BUILD/share/icu/59.1 ]]; then
                 rm -f $BUILD/share/icu/59.1/icudt59*.dat
                 cp -v icudt59*.dat $BUILD/share/icu/59.1
             else
