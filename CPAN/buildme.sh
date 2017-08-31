@@ -787,7 +787,12 @@ function build {
             ;;
         
         IO::Interface)
-            build_module IO-Interface-1.06
+            # Jails are notorious for requiring that lo0 be 127.0.0.1. This can be tough in jails.
+            if [[ "$OS" == "FreeBSD" && `sysctl -n security.jail.jailed` == 1 ]]; then
+                build_module IO-Interface-1.06 "" 0
+            else
+                build_module IO-Interface-1.06
+            fi
             ;;
         
         JSON::XS)
