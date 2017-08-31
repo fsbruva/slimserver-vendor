@@ -133,7 +133,21 @@ done
 echo "Looks like your compiler is $GCC"
 $GCC --version
 
-CC_TYPE=`$GCC --version`
+# This method works for FreeBSD, with "normal" installs of GCC and clang.
+CC_TYPE=`$GCC --version | head -1`
+
+CC_IS_CLANG=false
+CC_IS_GCC=false
+# Determine compiler type and version
+if [[ "$CC_TYPE" =~ "clang" ]]; then
+    # THis is a kludge that looks for the LLVM version, rather than divining the clang version
+    CC_VERSION=`$GCC --version | head -1 | sed "s#.*LLVM\ ##g" | sed "s#\ *)\ *##g" | sed -e 's/\.\([0-9][0-9]\)/\1/g' -e 's/\.\([0-9]\)/0\1/g' -e 's/^[0-9]\{3,4\}$/&00/'`
+    CC_IS_CLANG=true
+elif [[ "$CC_TYPE" =~ "gcc" || "$CC_TYPE" =~ "GCC" ]]; then
+    CC_VERSION=`$GCC -dumpversion | sed "s#\ *)\ *##g" | sed -e 's/\.\([0-9][0-9]\)/\1/g' -e 's/\.\([0-9]\)/0\1/g' -e 's/^[0-9]\{3,4\}$/&00/'`
+    CC_IS_GCC=true
+fi
+
 PERL_CC=`$ARCHPERL -V | grep cc=\' | sed "s#.*cc=\'##g" | sed "s#\',.*##g"`
 
 if [[ "$PERL_CC" != "$GCC" ]]; then
@@ -678,7 +692,8 @@ function build {
             # Custom build for ICU support
             tar_wrapper zxvf DBD-SQLite-1.34_01.tar.gz
             cd DBD-SQLite-1.34_01
-            if [[ "$OS" = 'FreeBSD' && "$BSD_MAJOR_VER" -ge 10 && "$CC_TYPE" =~ "clang" ]]; then
+            if [[ "$CC_IS_CLANG" == true ]] ; then
+            # Need this because GCC uses -lstdc++, but clang uses -lc++
                 patch -p0 < ../DBD-SQLite-ICU-clang.patch
             else
                 patch -p0 < ../DBD-SQLite-ICU.patch
