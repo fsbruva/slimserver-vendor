@@ -37,7 +37,7 @@
 RUN_TESTS=1
 USE_HINTS=1
 CLEAN=1
-FLAGS="-fPIC"
+FLAGS="-fPIC "
 
 function usage {
     cat <<EOF
@@ -548,9 +548,9 @@ function build_module {
         
         $PERL_BIN Makefile.PL INSTALL_BASE=$PERL_BASE $makefile_args
         if [ $local_run_tests -eq 1 ]; then
-            make test
+            $MAKE test
         else
-            make
+            $MAKE
         fi
         if [ $? != 0 ]; then
             if [ $local_run_tests -eq 1 ]; then
@@ -560,10 +560,10 @@ function build_module {
             fi
             exit $?
         fi
-        make install
+        $MAKE install
 
         if [ $local_clean -eq 1 ]; then
-            make clean
+            $MAKE clean
         fi
     fi
 
@@ -612,9 +612,9 @@ function build {
 
                 $PERL_58 Makefile.PL INSTALL_BASE=$PERL_BASE $2
                 if [ $RUN_TESTS -eq 1 ]; then
-                    make test
+                    $MAKE test
                 else
-                    make
+                    $MAKE
                 fi
                 if [ $? != 0 ]; then
                     if [ $RUN_TESTS -eq 1 ]; then
@@ -624,9 +624,9 @@ function build {
                     fi
                     exit $?
                 fi
-                make install
+                $MAKE install
                 if [ $CLEAN -eq 1 ]; then
-                    make clean
+                    $MAKE clean
                 fi
                 cd ..
                 rm -rf Class-C3-XS-0.11
@@ -787,7 +787,11 @@ function build {
             ;;
         
         Encode::Detect)
-            build_module Data-Dump-1.19
+            if [[ "$OS" == "FreeBSD" && `sysctl -n security.jail.jailed` == 1 ]]; then
+                build_module Data-Dump-1.19 "" 0
+            else
+                build_module Data-Dump-1.19
+            fi
             build_module ExtUtils-CBuilder-0.260301
             build_module Module-Build-0.35 "" 0
             build_module Encode-Detect-1.00
@@ -912,12 +916,12 @@ function build {
                 --disable-dependency-tracking \
                 --enable-thread-safe-client \
                 --without-server --disable-shared --without-docs --without-man
-            make
+            $MAKE
             if [ $? != 0 ]; then
                 echo "make failed"
                 exit $?
             fi
-            make install
+            $MAKE install
             cd ..
             rm -rf mysql-5.1.37
 
@@ -1018,6 +1022,11 @@ function build {
             ;;
         
         Media::Scan)            
+            if [ "$OS" = "FreeBSD" ]; then
+                NEW_FFMPEG=true
+            fi
+
+
             build_ffmpeg
             build_libexif
             build_libjpeg
@@ -1036,9 +1045,13 @@ function build {
 
             cd libmediascan-0.1
 
-			if [ "$OS" = "FreeBSD" ]; then
+            if [ "$OS" = "FreeBSD" ]; then
             	patch -p1 < ../libmediascan-freebsd.patch
             fi
+
+            if [ "$NEW_FFMPEG" == true ]; then
+                patch -p1 < ../libmediascan-ffmpeg.patch
+            fi 
 
             CC="$GCC" CXX="$GXX" CPP="$GPP" \
             CFLAGS="-I$BUILD/include $FLAGS $OSX_ARCH $OSX_FLAGS -O3" \
@@ -1178,6 +1191,7 @@ function build_libjpeg {
         # Disable features we don't need
         cp -fv ../libjpeg-turbo-jmorecfg.h jmorecfg.h
         
+        CC="$GCC" CXX="$GXX" CPP="$GPP" \
         CFLAGS="-O3 -m32 $OSX_FLAGS" \
         CXXFLAGS="-O3 -m32 $OSX_FLAGS" \
         LDFLAGS="-m32 $OSX_FLAGS" \
@@ -1325,13 +1339,18 @@ function build_ffmpeg {
     fi
     
     # build ffmpeg, enabling only the things libmediascan uses
-    tar_wrapper jxvf ffmpeg-0.8.4.tar.bz2
-    cd ffmpeg-0.8.4
+    if [ "$NEW_FFMPEG" == true ]; then
+        tar_wrapper jxf ffmpeg-3.4.tar.bz2
+        cd ffmpeg-3.4
+    else    
+        tar_wrapper jxvf ffmpeg-0.8.4.tar.bz2
+        cd ffmpeg-0.8.4
     
-    if [ "$MACHINE" = "padre" ]; then
-        patch -p0 < ../ffmpeg-padre-configure.patch
+        if [ "$MACHINE" = "padre" ]; then
+            patch -p0 < ../ffmpeg-padre-configure.patch
+        fi
     fi
-    
+
     echo "Configuring FFmpeg..."
     
     # x86: Disable all but the lowend MMX ASM
@@ -1339,10 +1358,9 @@ function build_ffmpeg {
     # PPC: Disable AltiVec
     FFOPTS="--prefix=$BUILD --disable-ffmpeg --disable-ffplay --disable-ffprobe --disable-ffserver \
         --disable-avdevice --enable-pic \
-        --disable-amd3dnow --disable-amd3dnowext --disable-mmx2 --disable-sse --disable-ssse3 --disable-avx \
-        --disable-armv5te --disable-armv6 --disable-armv6t2 --disable-armvfp --disable-iwmmxt --disable-mmi --disable-neon \
+        --disable-amd3dnow --disable-amd3dnowext --disable-sse --disable-ssse3 --disable-avx \
+        --disable-armv5te --disable-armv6 --disable-armv6t2 --disable-mmi --disable-neon \
         --disable-altivec \
-        --disable-vis \
         --enable-zlib --disable-bzlib \
         --disable-everything --enable-swscale \
         --enable-decoder=h264 --enable-decoder=mpeg1video --enable-decoder=mpeg2video \
@@ -1360,16 +1378,26 @@ function build_ffmpeg {
         --enable-parser=mpeg4video --enable-parser=mpegaudio --enable-parser=mpegvideo --enable-parser=vc1 \
         --enable-demuxer=asf --enable-demuxer=avi --enable-demuxer=flv --enable-demuxer=h264 \
         --enable-demuxer=matroska --enable-demuxer=mov --enable-demuxer=mpegps --enable-demuxer=mpegts --enable-demuxer=mpegvideo \
-        --enable-protocol=file"
+        --enable-protocol=file --cc=$GCC --cxx=$GXX"
+
+    # Use all the old ffmpeg flags
+    if [ "$NEW_FFMPEG" == false ]; then
+        FFOPTS="$FFOPTS --disable-mmx2 --disable-armvfp --disable-iwmmxt --disable-vis"
+    fi 
     
     # ASM doesn't work right on x86_64
     # XXX test --arch options on Linux
-    if [ "$ARCH" = "x86_64-linux-thread-multi" -o "$ARCH" = "amd64-freebsd-thread-multi" ]; then
+    if [ "$ARCH" = "x86_64-linux-thread-multi"  ]; then
         FFOPTS="$FFOPTS --disable-mmx"
     fi
-    # FreeBSD amd64 needs arch option
-    if [ "$ARCH" = "amd64-freebsd" -o "$ARCH" = "amd64-freebsd-thread-multi" ]; then
-        FFOPTS="$FFOPTS --arch=x86"
+    # Catch all FreeBSD amd64's here
+    # Need arch options, disable the mmx's
+    if [[ "$ARCH" =~ "amd64-freebsd" ]]; then
+         FFOPTS="$FFOPTS --arch=amd64 --disable-mmx"
+        # Jails can't seem to do any asm, so don't try.
+        if [[ `sysctl -n security.jail.jailed` == 1 ]]; then
+            FFOPTS="$FFOPTS --disable-asm"
+        fi
     fi
     
     if [ "$OS" = "Darwin" ]; then
@@ -1468,8 +1496,12 @@ function build_ffmpeg {
         $MAKE install
         cd ..
     fi
-    
-    rm -rf ffmpeg-0.8.4
+
+    if [ "$NEW_FFMPEG" == true ]; then
+        rm -r ffmpeg-3.4
+    else    
+        rm -rf ffmpeg-0.8.4
+    fi
 }
 
 function build_bdb {
@@ -1492,6 +1524,7 @@ function build_bdb {
        patch -p0 < ../db51-src_dbinc_atomic.patch
        popd
     fi
+
     CC="$GCC" CXX="$GXX" CPP="$GPP" \
     CFLAGS="$FLAGS $OSX_ARCH $OSX_FLAGS -O3" \
     LDFLAGS="$FLAGS $OSX_ARCH $OSX_FLAGS -O3" \
