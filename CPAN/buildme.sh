@@ -45,6 +45,7 @@ RUN_TESTS=1
 USE_HINTS=1
 CLEAN=1
 FLAGS="-fPIC"
+BSD_PKG=1
 
 function usage {
     cat <<EOF
@@ -54,13 +55,14 @@ $0 [args] [target]
 -i <lmsbase>  install modules in lmsbase directory
 -p <perlbin > set custom perl binary
 -t            do not run tests
+-B            do not attempt to use FreeBSD distro packages
 
 target: make target - if not specified all will be built
 
 EOF
 }
 
-while getopts hci:p:t opt; do
+while getopts hci:p:t:B opt; do
   case $opt in
   c)
       CLEAN=0
@@ -73,6 +75,9 @@ while getopts hci:p:t opt; do
       ;;
   t)
       RUN_TESTS=0
+      ;;
+  B)
+      BSD_PKG=0
       ;;
   h)
       usage
@@ -88,7 +93,7 @@ done
 
 shift $((OPTIND - 1))
 
-echo "RUN_TESTS:$RUN_TESTS CLEAN:$CLEAN USE_HINTS:$USE_HINTS target ${1-all}"
+echo "RUN_TESTS:$RUN_TESTS CLEAN:$CLEAN USE_HINTS:$USE_HINTS BSD_PKG:$BSD_PKG target ${1-all}"
 
 OS=`uname`
 MACHINE=`uname -m`
@@ -618,14 +623,27 @@ function build {
             ;;
         
         Class::XSAccessor)
-            if [ $PERL_MINOR_VER -ge 16 ]; then
-                build_module Class-XSAccessor-1.18
-                cp -pR $PERL_BASE/lib/perl5/$ARCH/Class $PERL_ARCH/
-            else
-                if [[ "$CC_IS_CLANG" == true ]]; then
+            if [[ "$OS" = 'FreeBSD' && $BSD_MAJOR_VER -ge 10 && $BSD_PKG -eq 1 ]]; then
+                freebsd_module "devel/p5-Class-XSAccessor"
+                local RESULT_CODE=$?
+                if [[ $RESULT_CODE -eq 2 ]]; then
+                    echo " ABORTING... "
+                    exit 1
+                elif [[ $RESULT_CODE -eq 1 ]]; then
+                    echo " REVERTING TO LEGACY BUILD... "
+                    BSD_PKG=0
+                fi
+            fi
+            if [[ $BSD_PKG -eq 0 ]]; then
+                if [ $PERL_MINOR_VER -ge 16 ]; then
                     build_module Class-XSAccessor-1.18
+                    cp -pR $PERL_BASE/lib/perl5/$ARCH/Class $PERL_ARCH/
                 else
-                    build_module Class-XSAccessor-1.05
+                    if [[ "$CC_IS_CLANG" == true ]]; then
+                        build_module Class-XSAccessor-1.18
+                    else
+                        build_module Class-XSAccessor-1.05
+                    fi
                 fi
             fi
             ;;
@@ -638,16 +656,43 @@ function build {
             ;;
         
         DBI)
-            if [ $PERL_MINOR_VER -ge 18 ]; then
-                build_module DBI-1.628
-                cp -p $PERL_BASE/lib/perl5/$ARCH/DBI.pm $PERL_ARCH/
-                cp -pR $PERL_BASE/lib/perl5/$ARCH/DBI $PERL_ARCH/
-            else
-                build_module DBI-1.616 "" 0
+            if [[ "$OS" = 'FreeBSD' && $BSD_MAJOR_VER -ge 10 && $BSD_PKG -eq 1 ]]; then
+                freebsd_module "databases/p5-DBI"
+                local RESULT_CODE=$?
+                if [[ $RESULT_CODE -eq 2 ]]; then
+                    echo " ABORTING... "
+                    exit 1
+                elif [[ $RESULT_CODE -eq 1 ]]; then
+                    echo " REVERTING TO LEGACY BUILD... "
+                    BSD_PKG=0
+                fi
+            fi
+            if [[ $BSD_PKG -eq 0 ]]; then
+                if [ $PERL_MINOR_VER -ge 18 ]; then
+                    build_module DBI-1.628
+                    cp -p $PERL_BASE/lib/perl5/$ARCH/DBI.pm $PERL_ARCH/
+                    cp -pR $PERL_BASE/lib/perl5/$ARCH/DBI $PERL_ARCH/
+                else
+                    build_module DBI-1.616 "" 0
+                fi
             fi
             ;;
         
         DBD::SQLite)
+            if [[ "$OS" = 'FreeBSD' && $BSD_MAJOR_VER -ge 10 && $BSD_PKG -eq 1 ]]; then
+                local DEP_PKG_NAME="databases/sqlite3"
+                local PKG_MSG="LMS requires that you DON'T use the bundled sqlite, and that $DEP_PKG_NAME use ICU for unicode."
+                freebsd_module "databases/p5-DBD-SQLite" "$PKG_MSG" "BUNDLED.*off" "$DEP_PKG_NAME" "ICU.*on"
+                local RESULT_CODE=$?
+                if [[ $RESULT_CODE -eq 2 ]]; then
+                    echo " ABORTING... "
+                    exit 1
+                elif [[ $RESULT_CODE -eq 1 ]]; then
+                    echo " REVERTING TO LEGACY BUILD... "
+                    BSD_PKG=0
+                fi
+            fi
+        if [[ $BSD_PKG -eq 0 ]]; then
             if [ $PERL_MINOR_VER -ge 18 ]; then
                 build_module DBI-1.628 "" 0
             else
@@ -748,14 +793,39 @@ function build {
 		   build_module DBD-SQLite-1.34_01
 		fi
             fi
-            
-            ;;
+fi
+        ;;
         
         Digest::SHA1)
+            if [[ "$OS" = 'FreeBSD' && $BSD_MAJOR_VER -ge 10 && $BSD_PKG -eq 1 ]]; then
+                freebsd_module "security/p5-Digest-SHA1"
+                local RESULT_CODE=$?
+                if [[ $RESULT_CODE -eq 2 ]]; then
+                    echo " ABORTING... "
+                    exit 1
+                elif [[ $RESULT_CODE -eq 1 ]]; then
+                    echo " REVERTING TO LEGACY BUILD... "
+                    BSD_PKG=0
+                fi
+            fi
+        if [[ $BSD_PKG -eq 0 ]]; then
             build_module Digest-SHA1-2.13
+fi
             ;;
         
         EV)
+            if [[ "$OS" = 'FreeBSD' && $BSD_MAJOR_VER -ge 10 && $BSD_PKG -eq 1 ]]; then
+                freebsd_module "devel/p5-EV"
+                local RESULT_CODE=$?
+                if [[ $RESULT_CODE -eq 2 ]]; then
+                    echo " ABORTING... "
+                    exit 1
+                elif [[ $RESULT_CODE -eq 1 ]]; then
+                    echo " REVERTING TO LEGACY BUILD... "
+                    BSD_PKG=0
+                fi
+            fi
+        if [[ $BSD_PKG -eq 0 ]]; then
             build_module common-sense-2.0
 
             # custom build to apply pthread patch
@@ -775,21 +845,62 @@ function build {
             build_module EV-4.03
 
             export PERL_MM_USE_DEFAULT=
+fi
             ;;
         
         Encode::Detect)
+            if [[ "$OS" = 'FreeBSD' && $BSD_MAJOR_VER -ge 10 && $BSD_PKG -eq 1 ]]; then
+                freebsd_module "converters/p5-Encode-Detect"
+                local RESULT_CODE=$?
+                if [[ $RESULT_CODE -eq 2 ]]; then
+                    echo " ABORTING... "
+                    exit 1
+                elif [[ $RESULT_CODE -eq 1 ]]; then
+                    echo " REVERTING TO LEGACY BUILD... "
+                    BSD_PKG=0
+                fi
+            fi
+        if [[ $BSD_PKG -eq 0 ]]; then
+
             build_module Data-Dump-1.19
             build_module ExtUtils-CBuilder-0.260301
             build_module Module-Build-0.35 "" 0
             build_module Encode-Detect-1.00
+fi
             ;;
         
         HTML::Parser)
+            if [[ "$OS" = 'FreeBSD' && $BSD_MAJOR_VER -ge 10 && $BSD_PKG -eq 1 ]]; then
+                freebsd_module "www/p5-HTML-Parser"
+                local RESULT_CODE=$?
+                if [[ $RESULT_CODE -eq 2 ]]; then
+                    echo " ABORTING... "
+                    exit 1
+                elif [[ $RESULT_CODE -eq 1 ]]; then
+                    echo " REVERTING TO LEGACY BUILD... "
+                    BSD_PKG=0
+                fi
+            fi
+        if [[ $BSD_PKG -eq 0 ]]; then
+
             build_module HTML-Tagset-3.20
             build_module HTML-Parser-3.68
-            ;;
+fi            ;;
 
         Image::Scale)
+            if [[ "$OS" = 'FreeBSD' && $BSD_MAJOR_VER -ge 10 && $BSD_PKG -eq 1 ]]; then
+                freebsd_module "graphics/p5-Image-Scale"
+                local RESULT_CODE=$?
+                if [[ $RESULT_CODE -eq 2 ]]; then
+                    echo " ABORTING... "
+                    exit 1
+                elif [[ $RESULT_CODE -eq 1 ]]; then
+                    echo " REVERTING TO LEGACY BUILD... "
+                    BSD_PKG=0
+                fi
+            fi
+        if [[ $BSD_PKG -eq 0 ]]; then
+
             build_libjpeg
             build_libpng
             build_giflib
@@ -813,7 +924,7 @@ function build {
                     --with-png-includes="$BUILD/include" --with-png-static \
                     --with-gif-includes="$BUILD/include" --with-gif-static \
                     INSTALL_BASE=$PERL_BASE"
-            
+fi
             ;;
         
         IO::AIO)
@@ -826,15 +937,40 @@ function build {
             ;;
         
         IO::Interface)
+            if [[ "$OS" = 'FreeBSD' && $BSD_MAJOR_VER -ge 10 && $BSD_PKG -eq 1 ]]; then
+                freebsd_module "net/p5-IO-Interface"
+                local RESULT_CODE=$?
+                if [[ $RESULT_CODE -eq 2 ]]; then
+                    echo " ABORTING... "
+                    exit 1
+                elif [[ $RESULT_CODE -eq 1 ]]; then
+                    echo " REVERTING TO LEGACY BUILD... "
+                    BSD_PKG=0
+                fi
+            fi
+        if [[ $BSD_PKG -eq 0 ]]; then
             # The IO::Interface tests erroneously require that lo0 be 127.0.0.1. This can be tough in jails.
             if [[ "$OS" == "FreeBSD" && `sysctl -n security.jail.jailed` == 1 ]]; then
                 build_module IO-Interface-1.06 "" 0
             else
                 build_module IO-Interface-1.06
             fi
+fi
             ;;
 
         IO::Socket::SSL)
+            if [[ "$OS" = 'FreeBSD' && $BSD_MAJOR_VER -ge 10 && $BSD_PKG -eq 1 ]]; then
+                freebsd_module "devel/p5-IO-Socket-SSL"
+                local RESULT_CODE=$?
+                if [[ $RESULT_CODE -eq 2 ]]; then
+                    echo " ABORTING... "
+                    exit 1
+                elif [[ $RESULT_CODE -eq 1 ]]; then
+                    echo " REVERTING TO LEGACY BUILD... "
+                    BSD_PKG=0
+                fi
+            fi
+        if [[ $BSD_PKG -eq 0 ]]; then
             buildIOSocketSSL=1
             build_module Test-NoWarnings-1.02 "" 0
             build_module Net-IDN-Encode-2.400
@@ -852,9 +988,22 @@ function build {
             cd ..
 
             build_module IO-Socket-SSL-2.052 
+fi
 	    ;;
  
         JSON::XS)
+            if [[ "$OS" = 'FreeBSD' && $BSD_MAJOR_VER -ge 10 && $BSD_PKG -eq 1 ]]; then
+                freebsd_module "converters/p5-JSON-XS"
+                local RESULT_CODE=$?
+                if [[ $RESULT_CODE -eq 2 ]]; then
+                    echo " ABORTING... "
+                    exit 1
+                elif [[ $RESULT_CODE -eq 1 ]]; then
+                    echo " REVERTING TO LEGACY BUILD... "
+                    BSD_PKG=0
+                fi
+            fi
+        if [[ $BSD_PKG -eq 0 ]]; then
             build_module common-sense-2.0
             
             if [ $PERL_MINOR_VER -ge 18 ]; then
@@ -863,6 +1012,7 @@ function build {
             else
                 build_module JSON-XS-2.3
             fi
+fi
             ;;
         
         Linux::Inotify2)
@@ -883,10 +1033,36 @@ function build {
             ;;
         
         Sub::Name)
+            if [[ "$OS" = 'FreeBSD' && $BSD_MAJOR_VER -ge 10 && $BSD_PKG -eq 1 ]]; then
+                freebsd_module "devel/p5-Sub-Name"
+                local RESULT_CODE=$?
+                if [[ $RESULT_CODE -eq 2 ]]; then
+                    echo " ABORTING... "
+                    exit 1
+                elif [[ $RESULT_CODE -eq 1 ]]; then
+                    echo " REVERTING TO LEGACY BUILD... "
+                    BSD_PKG=0
+                fi
+            fi
+        if [[ $BSD_PKG -eq 0 ]]; then
+
             build_module Sub-Name-0.05
+fi
             ;;
         
         YAML::LibYAML)
+            if [[ "$OS" = 'FreeBSD' && $BSD_MAJOR_VER -ge 10 && $BSD_PKG -eq 1 ]]; then
+                freebsd_module "devel/p5-YAML-LibYAML"
+                local RESULT_CODE=$?
+                if [[ $RESULT_CODE -eq 2 ]]; then
+                    echo " ABORTING... "
+                    exit 1
+                elif [[ $RESULT_CODE -eq 1 ]]; then
+                    echo " REVERTING TO LEGACY BUILD... "
+                    BSD_PKG=0
+                fi
+            fi
+        if [[ $BSD_PKG -eq 0 ]]; then
             # Needed because LibYAML 0.35 used . in @INC (not permitted in Perl 5.26)
             if [ $PERL_MINOR_VER -ge 26 ]; then
                 build_module YAML-LibYAML-0.65
@@ -895,13 +1071,27 @@ function build {
             else
                 build_module YAML-LibYAML-0.35
             fi
+fi
             ;;
         
         Audio::Scan)
+            if [[ "$OS" = 'FreeBSD' && $BSD_MAJOR_VER -ge 10 && $BSD_PKG -eq 1 ]]; then
+                freebsd_module "audio/p5-Audio-Scan"
+                local RESULT_CODE=$?
+                if [[ $RESULT_CODE -eq 2 ]]; then
+                    echo " ABORTING... "
+                    exit 1
+                elif [[ $RESULT_CODE -eq 1 ]]; then
+                    echo " REVERTING TO LEGACY BUILD... "
+                    BSD_PKG=0
+                fi
+            fi
+        if [[ $BSD_PKG -eq 0 ]]; then
             build_module Sub-Uplevel-0.22 "" 0
             build_module Tree-DAG_Node-1.06 "" 0
             build_module Test-Warn-0.23 "" 0
             build_module Audio-Scan-0.95
+fi
             ;;
 
         MP3::Cut::Gapless)
@@ -910,6 +1100,19 @@ function build {
             ;;  
         
         Template)
+            if [[ "$OS" = 'FreeBSD' && $BSD_MAJOR_VER -ge 10 && $BSD_PKG -eq 1 ]]; then
+                freebsd_module "www/p5-Template-Toolkit"
+                local RESULT_CODE=$?
+                if [[ $RESULT_CODE -eq 2 ]]; then
+                    echo " ABORTING... "
+                    exit 1
+                elif [[ $RESULT_CODE -eq 1 ]]; then
+                    echo " REVERTING TO LEGACY BUILD... "
+                    BSD_PKG=0
+                fi
+            fi
+        if [[ $BSD_PKG -eq 0 ]]; then
+
             # Template, custom build due to 2 Makefile.PL's
             tar_wrapper zxvf Template-Toolkit-2.21.tar.gz
             cd Template-Toolkit-2.21
@@ -919,7 +1122,7 @@ function build {
 
             $MAKE # minor test failure, so don't test
             build_module Template-Toolkit-2.21 "INSTALL_BASE=$PERL_BASE TT_ACCEPT=y TT_EXAMPLES=n TT_EXTRAS=n" 0
-
+fi
             ;;
         
         DBD::mysql)
@@ -956,6 +1159,18 @@ function build {
             ;;
         
         XML::Parser)
+            if [[ "$OS" = 'FreeBSD' && $BSD_MAJOR_VER -ge 10 && $BSD_PKG -eq 1 ]]; then
+                freebsd_module "textproc/p5-XML-Parser"
+                local RESULT_CODE=$?
+                if [[ $RESULT_CODE -eq 2 ]]; then
+                    echo " ABORTING... "
+                    exit 1
+                elif [[ $RESULT_CODE -eq 1 ]]; then
+                    echo " REVERTING TO LEGACY BUILD... "
+                    BSD_PKG=0
+                fi
+            fi
+        if [[ $BSD_PKG -eq 0 ]]; then
             # build expat
             tar_wrapper zxvf expat-2.0.1.tar.gz
             cd expat-2.0.1/conftools
@@ -991,6 +1206,7 @@ function build {
             build_module XML-Parser-2.41 "INSTALL_BASE=$PERL_BASE EXPATLIBPATH=$BUILD/lib EXPATINCPATH=$BUILD/include" 
             
             rm -rf expat-2.0.1
+fi
             ;;
         
         Font::FreeType)
@@ -1541,6 +1757,54 @@ function build_bdb {
     cd ../..
     
     rm -rf db-5.1.25
+}
+
+# $1 = Primary port to test, e.g. "databases/p5-DBD-SQLite"
+# $2 = Optional descriptive message, e.g. "LMS requires that you DON'T use the bundled sqlite, and that $DEP_PKG_NAME use ICU for unicode."
+# $3 = LMS required knob for primary port as regex (optional), e.g. "BUNDLED.*off"
+# $4 = Secondary or dependent port to test (optional), e.g. databases/sqlite3
+# $5 = LMS required knob for secondary port as regex (optional), e.g. "ICU.*on"
+#
+# Returns: 0 - all required packages/options in place (good to go)
+#          1 - missing packages/options, revert to LMS building (legacy method)
+#          2 - missing packages/options, abort current LMS build to permit remedy
+function freebsd_module {
+    local PKG_FAIL=0
+    local PKG_NAME=$1
+    pkg info --exists $PKG_NAME
+    local PKG_RTN=$?
+    if [[ $PKG_RTN -eq 1 || ( ! -z $3 && `pkg info $PKG_NAME | grep -c -e $3` -eq 0 ) ]]; then
+        # Either the package we need doesn't exist, OR it exists without the LMS requisite options
+        PKG_FAIL=1
+    fi
+    # Don't bother with the other tests if we've already failed (or we don't have another port to test)
+    if [[ PKG_FAIL -eq 0 && ! -z $4 ]]; then
+       local DEP_PKG_NAME=$4
+       pkg info --exists $DEP_PKG_NAME
+       local DEP_PKG_RTN=$?
+       if [[ $DEP_PKG_RTN -eq 1 || ( ! -z $5 && `pkg info $DEP_PKG_NAME | grep -c -e $5` -eq 0 ) ]]; then
+           PKG_FAIL=1
+       fi
+    fi
+    # All tests completed - alert user.
+    if [[ $PKG_FAIL -eq 1 ]]; then
+        echo "******* You are running a modern FreeBSD, so please install the $PKG_NAME package from ports."
+        if [[ ! -z $2 ]]; then
+            echo "******* $2"
+        fi
+        echo "******* Alternatively, you could run this script again with the -B flag set to force legacy build."
+        echo
+        read -p "Would you like to revert to the manual (legacy) build for this and all subsequent modules? (y/N)" -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            return 1
+        else
+            return 2
+        fi
+    else
+        echo "******* Using the $PKG_NAME package."
+        return 0
+    fi
 }
 
 # Build a single module if requested, or all
