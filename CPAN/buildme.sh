@@ -1041,24 +1041,7 @@ function build {
             # in libjpeg.dylib, Perl still links OK because it uses libjpeg.a
             tar_wrapper zxvf libmediascan-0.1.tar.gz
 
-            if [ "$OSX_VER" = "10.9" -o "$OSX_VER" = "10.10" ]; then
-                patch -p0 < libmediascan01_patches/libmediascan-hints-darwin.pl.patch
-            fi
-
-            cd libmediascan-0.1
-
-            if [ "$OS" = "FreeBSD" ]; then
-            	patch -p1 < ../libmediascan01_patches/libmediascan-freebsd.patch
-            elif [ "$OS" = "SunOS" ]; then
-                patch -p0 < ../libmediascan01_patches/libmediascan-mediascan_unix.c-SunOS.patch 
-            fi
-            . ../update-config.sh
-
-            patch -p1 < ../libmediascan01_patches/libmediascan-ffmpeg.patch
-            patch -p0 < ../libmediascan01_patches/libmediascan-image_gif.c.patch
-            patch -p0 < ../libmediascan01_patches/libmediascan-Makefile.PL.patch
-            patch -p0 < ../libmediascan01_patches/libmediascan-Scan.xs.patch
-
+            cd libmediascan-0.2
 
             CC="$GCC" CXX="$GXX" CPP="$GPP" \
             CFLAGS="-I$BUILD/include $FLAGS $OSX_ARCH $OSX_FLAGS -O3" \
