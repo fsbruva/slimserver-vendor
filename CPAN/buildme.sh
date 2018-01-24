@@ -93,16 +93,7 @@ echo "RUN_TESTS:$RUN_TESTS CLEAN:$CLEAN USE_HINTS:$USE_HINTS target ${1-all}"
 OS=`uname`
 MACHINE=`uname -m`
 
-# get system arch, stripping out extra -gnu on Linux
-ARCHPERL=/usr/bin/perl
-if [ "$OS" = "FreeBSD" ]; then
-    ARCHPERL=/usr/local/bin/perl
-fi
-ARCH=`$ARCHPERL -MConfig -le 'print $Config{archname}' | sed 's/gnu-//' | sed 's/^i[3456]86-/i386-/' | sed 's/armv.*?-/arm-/' `
-
-if [ "$OS" = "Linux" -o "$OS" = "Darwin" -o "$OS" = "FreeBSD" -o "SunOS" ]; then
-    echo "Building for $OS / $ARCH"
-else
+if [ "$OS" != "Linux" -a "$OS" != "Darwin" -a "$OS" != "FreeBSD" -a "$OS" != "SunOS" ]; then
     echo "Unsupported platform: $OS, please submit a patch or provide us with access to a development system."
     exit
 fi
@@ -142,7 +133,7 @@ if [ "$OS" = "FreeBSD" ]; then
     fi
 fi
 
-for i in $GCC cpp rsync make ; do
+for i in $GCC $GPP rsync make ; do
     which $i > /dev/null
     if [ $? -ne 0 ] ; then
         echo "$i not found - please install it"
@@ -214,20 +205,6 @@ else
     echo "*"
     echo "********************************************************************************************"
     GCC_LIBCPP=false
-fi
-
-PERL_CC=`$ARCHPERL -V | grep cc=\' | sed "s#.*cc=\'##g" | sed "s#\'.*##g"`
-
-if [[ "$PERL_CC" != "$GCC" ]]; then
-    echo "********************************************** WARNING *************************************"
-    echo "*                                                                                          *"
-    echo "*    Perl was compiled with $PERL_CC,"
-    echo "*    which is different than $GCC."
-    echo "*    This may cause significant problems.                                                  *"
-    echo "*                                                                                          *"
-    echo "* Press CTRL^C to stop the build now...                                                    *"
-    echo "********************************************************************************************"
-    sleep 3
 fi
 
 which yasm > /dev/null
@@ -452,10 +429,27 @@ if [ "$PERL_BIN" = "" -o "$CUSTOM_PERL" != "" ]; then
 
 fi
 
+# We have found Perl, so get system arch, stripping out extra -gnu on Linux
+ARCH=`$PERL_BIN -MConfig -le 'print $Config{archname}' | sed 's/gnu-//' | sed 's/^i[3456]86-/i386-/' | sed 's/armv.*?-/arm-/' `
+# Check to make sure this script and perl use the same compiler
+PERL_CC=`$PERL_BIN -V | grep "cc='" | sed "s#.*cc='##g" | sed "s#'.*##g"`
+
+if [[ "$PERL_CC" != "$GCC" ]]; then
+    echo "********************************************** WARNING *************************************"
+    echo "*                                                                                          *"
+    echo "*    Perl was compiled with $PERL_CC,"
+    echo "*    which is different than $GCC."
+    echo "*    This may cause significant problems.                                                  *"
+    echo "*                                                                                          *"
+    echo "* Press CTRL^C to stop the build now...                                                    *"
+    echo "********************************************************************************************"
+    sleep 3
+fi
+
+echo "Building for $OS / $ARCH"
 echo "Building with Perl 5.$PERL_MINOR_VER at $PERL_BIN"
 PERL_BASE=$BUILD/5.$PERL_MINOR_VER
 PERL_ARCH=$BUILD/arch/5.$PERL_MINOR_VER
-
 
 # FreeBSD's make sucks
 if [ "$OS" = "FreeBSD" ]; then
@@ -620,7 +614,6 @@ function build {
         Class::XSAccessor)
             if [ $PERL_MINOR_VER -ge 16 ]; then
                 build_module Class-XSAccessor-1.18
-                cp -pR $PERL_BASE/lib/perl5/$ARCH/Class $PERL_ARCH/
             else
                 if [[ "$CC_IS_CLANG" == true ]]; then
                     build_module Class-XSAccessor-1.18
@@ -633,15 +626,12 @@ function build {
         Compress::Raw::Zlib)
             if [ $PERL_MINOR_VER -eq 8 -o $PERL_MINOR_VER -eq 10 ]; then
 	            build_module Compress-Raw-Zlib-2.033
-                    cp -pR $PERL_BASE/lib/perl5/$ARCH/Compress $PERL_ARCH/
             fi
             ;;
         
         DBI)
             if [ $PERL_MINOR_VER -ge 18 ]; then
                 build_module DBI-1.628
-                cp -p $PERL_BASE/lib/perl5/$ARCH/DBI.pm $PERL_ARCH/
-                cp -pR $PERL_BASE/lib/perl5/$ARCH/DBI $PERL_ARCH/
             else
                 build_module DBI-1.616 "" 0
             fi
@@ -667,7 +657,7 @@ function build {
                     ICUFLAGS="$FLAGS -DU_USING_ICU_NAMESPACE=0"
                     ICUOS="Linux"
                 elif [ "$OS" = 'SunOS' ]; then
-                    ICUFLAGS="$FLAGS -DU_USING_ICU_NAMESPACE=0"
+                    ICUFLAGS="$FLAGS -D_XPG6 -DU_USING_ICU_NAMESPACE=0"
                     ICUOS="Solaris/GCC"
                 elif [ "$OS" = 'FreeBSD' ]; then
                     ICUFLAGS="$FLAGS -DU_USING_ICU_NAMESPACE=0"
@@ -804,12 +794,6 @@ function build {
             tar_wrapper zxvf Image-Scale-0.14.tar.gz
             cd Image-Scale-0.14
 
-            if [[ "$OS" = "FreeBSD" && "$PERL_MINOR_VER" -ge 22 ]]; then
-                TEMP_ARCH=` $PERL_BIN -MConfig -le 'print $Config{archname}' | sed 's/gnu-//' | sed 's/^i[3456]86-/i386-/' | sed 's/armv.*?-/arm-/' `
-                mkdir -p $PERL_ARCH/$TEMP_ARCH
-                cp -Rv lib/Image $PERL_ARCH/$TEMP_ARCH/
-            fi
-
             cp -Rv ../hints .
             cd ..
             
@@ -839,7 +823,6 @@ function build {
             ;;
 
         IO::Socket::SSL)
-            buildIOSocketSSL=1
             build_module Test-NoWarnings-1.02 "" 0
             build_module Net-IDN-Encode-2.400
 
@@ -863,7 +846,6 @@ function build {
             
             if [ $PERL_MINOR_VER -ge 18 ]; then
                 build_module JSON-XS-2.34
-                cp -pR $PERL_BASE/lib/perl5/$ARCH/JSON $PERL_ARCH/
             else
                 build_module JSON-XS-2.3
             fi
@@ -1610,18 +1592,9 @@ find $BUILD -name '*.packlist' -exec rm -f {} \;
 
 # create our directory structure
 # rsync is used to avoid copying non-binary modules or other extra stuff
-if [ $PERL_MINOR_VER -ge 12 ]; then
-    # Check for Perl using use64bitint and add -64int
-    ARCH=`$PERL_BIN -MConfig -le 'print $Config{archname}' | sed 's/gnu-//' | sed 's/^i[3456]86-/i386-/' | sed 's/armv.*?-/arm-/' `
-fi
 mkdir -p $PERL_ARCH/$ARCH
-rsync -amv --include='*/' --include='*.so' --include='*.bundle' --include='autosplit.ix' --exclude='*' $PERL_BASE/lib/perl5/*/auto $PERL_ARCH/$ARCH/
-if [ -n "${buildIOSocketSSL}"  ]; then
-    rsync -amv --include='*/' --include='Socket/' --include='*.pm' --exclude='*' $PERL_BASE/lib/perl5/IO $PERL_ARCH/$ARCH/
-    rsync -amv --include='*/' --include='IDN' --include='*.pm' --exclude='*' $PERL_BASE/lib/perl5/Net $PERL_ARCH/$ARCH/
-    rsync -amv --include='*/' --include='*.pm' --exclude='*' $PERL_BASE/lib/perl5/$ARCH/Net $PERL_ARCH/$ARCH/
-    rsync -amv --include='*/' --include='*.al' --include='autosplit.ix' --exclude='*' $PERL_BASE/lib/perl5/*/auto $PERL_ARCH/$ARCH/
-fi
+rsync -amv --include='*/' --include='*.so' --include='*.bundle' --include='autosplit.ix' --include='*.pm' --include='*.al' --exclude='*' $PERL_BASE/lib/perl5/$ARCH $PERL_ARCH/
+rsync -amv --exclude=$ARCH --include='*/' --include='*.so' --include='*.bundle' --include='autosplit.ix' --include='*.pm' --include='*.al' --exclude='*' $PERL_BASE/lib/perl5/ $PERL_ARCH/$ARCH/
 
 if [ $LMSBASEDIR ]; then
     if [ ! -d $LMSBASEDIR/CPAN/arch/5.$PERL_MINOR_VER/$ARCH ]; then
