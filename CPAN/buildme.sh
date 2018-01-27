@@ -463,7 +463,7 @@ elif [ "$OS" = "SunOS" ]; then
         echo "ERROR: Please install GNU make (gmake)"
         exit
     fi 
-    export MAKE=/usr/bin/gmake
+    export MAKE="/usr/bin/gmake -j4"
 else
     # Support a newer make if available, needed on ReadyNAS                                                                              
     if [ -x /usr/local/bin/make ]; then                                               
@@ -1039,7 +1039,7 @@ function build {
             # build libmediascan
             # XXX library does not link correctly on Darwin with libjpeg due to missing x86_64
             # in libjpeg.dylib, Perl still links OK because it uses libjpeg.a
-            tar_wrapper zxvf libmediascan-0.1.tar.gz
+            #tar_wrapper zxvf libmediascan-0.2.tar.gz
 
             cd libmediascan-0.2
 
@@ -1060,7 +1060,7 @@ function build {
             build_module Sub-Uplevel-0.22 "" 0
             build_module Tree-DAG_Node-1.06 "" 0
             build_module Test-Warn-0.23 "" 0
-            cd libmediascan-0.1/bindings/perl
+            cd libmediascan-0.2/bindings/perl
             # LMS's hints file is OK and also has custom frameworks added
             
             MSOPTS="--with-static \
@@ -1092,7 +1092,7 @@ function build {
             fi
             
             cd ../../..
-            rm -rf libmediascan-0.1
+            # rm -rf libmediascan-0.2
             ;;
     esac
 }
@@ -1396,11 +1396,15 @@ function build_ffmpeg {
     if [ "$MACHINE" = "padre" ]; then
         FFOPTS="$FFOPTS --arch=sparc"
     fi
-    
+  
+    # Disable h264 on SunOS as there are relocation error when linking to Media::Scan. 
+    if [ "$OS" = "SunOS" ] && [ "$FFMPEG_PREFIX" = "ffmpeg-3.4.1" ]; then
+        FFOPTS="$FFOPTS --disable-decoder=h264 --disable-demuxer=h264 --disable-parser=h264"
+    fi
+ 
     # ASM doesn't work right on x86_64
     # XXX test --arch options on Linux
     if [ "$ARCH" = "x86_64-linux-thread-multi" -o "$ARCH" = "amd64-freebsd-thread-multi" -o "$ARCH" = "i86pc-solaris-thread-multi-64int" ]; then
-    if [ "$ARCH" = "x86_64-linux-thread-multi" -o "$ARCH" = "i86pc-solaris-thread-multi-64int" ]; then
         FFOPTS="$FFOPTS --disable-mmx"
     fi
     # Catch all FreeBSD amd64's here, using the '=~' to glob
@@ -1494,12 +1498,12 @@ function build_ffmpeg {
         cp -f libswscale.a $BUILD/lib/libswscale.a
         
         FLAGS=$SAVED_FLAGS
-    else           
+    else
         CC="$GCC" CXX="$GXX" CPP="$GPP" \
         CFLAGS="$FLAGS -O3" \
         LDFLAGS="$FLAGS -O3" \
             ./configure $FFOPTS
-        
+
         $MAKE
         if [ $? != 0 ]; then
             echo "make failed"
