@@ -1345,21 +1345,23 @@ function build_giflib {
 }
 
 function build_ffmpeg {
+    FFMPEG_PREFIX="ffmpeg-3.4.1"
+    FFMPEG_VER_TO_BUILD=`echo ${FFMPEG_PREFIX##*-} | sed "s#\ *)\ *##g" | \
+            sed -e 's/\.\([0-9][0-9]\)/\1/g' -e 's/\.\([0-9]\)/0\1/g' -e 's/^[0-9]\{3,4\}$/&00/'`
     echo "build ffmpeg"
     if [ -f $BUILD/include/libavformat/avformat.h ]; then
         # Determine the version of the last-built ffmpeg
         if [ -f $BUILD/share/ffmpeg/VERSION ]; then
-            FFMPEG_VER=`cat $BUILD/share/ffmpeg/VERSION | sed "s#\ *)\ *##g" | \
+            FFMPEG_VER_FOUND=`cat $BUILD/share/ffmpeg/VERSION | sed "s#\ *)\ *##g" | \
             sed -e 's/\.\([0-9][0-9]\)/\1/g' -e 's/\.\([0-9]\)/0\1/g' -e 's/^[0-9]\{3,4\}$/&00/'`
             # Only skip the build if it's using the most recent version
-            if [ $FFMPEG_VER -ge 30401 ]; then
+            if [ $FFMPEG_VER_FOUND -ge $FFMPEG_VER_TO_BUILD ]; then
                 return
             fi
         fi
     fi
     
     # build ffmpeg, enabling only the things libmediascan uses
-    FFMPEG_PREFIX="ffmpeg-3.4.1"
     tar_wrapper jxf $FFMPEG_PREFIX.tar.bz2
     cd $FFMPEG_PREFIX
     . ../update-config.sh
@@ -1397,11 +1399,6 @@ function build_ffmpeg {
         FFOPTS="$FFOPTS --arch=sparc"
     fi
   
-    # Disable h264 on SunOS as there are relocation error when linking to Media::Scan. 
-    if [ "$OS" = "SunOS" ] && [ "$FFMPEG_PREFIX" = "ffmpeg-3.4.1" ]; then
-        FFOPTS="$FFOPTS --disable-decoder=h264 --disable-demuxer=h264 --disable-parser=h264"
-    fi
- 
     # ASM doesn't work right on x86_64
     # XXX test --arch options on Linux
     if [ "$ARCH" = "x86_64-linux-thread-multi" -o "$ARCH" = "amd64-freebsd-thread-multi" -o "$ARCH" = "i86pc-solaris-thread-multi-64int" ]; then
