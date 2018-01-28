@@ -1039,7 +1039,7 @@ function build {
             # build libmediascan
             # XXX library does not link correctly on Darwin with libjpeg due to missing x86_64
             # in libjpeg.dylib, Perl still links OK because it uses libjpeg.a
-            #tar_wrapper zxvf libmediascan-0.2.tar.gz
+            tar_wrapper zxvf libmediascan-0.2.tar.gz
 
             cd libmediascan-0.2
 
@@ -1092,7 +1092,7 @@ function build {
             fi
             
             cd ../../..
-            # rm -rf libmediascan-0.2
+            rm -rf libmediascan-0.2
             ;;
     esac
 }
@@ -1352,7 +1352,7 @@ function build_ffmpeg {
             FFMPEG_VER=`cat $BUILD/share/ffmpeg/VERSION | sed "s#\ *)\ *##g" | \
             sed -e 's/\.\([0-9][0-9]\)/\1/g' -e 's/\.\([0-9]\)/0\1/g' -e 's/^[0-9]\{3,4\}$/&00/'`
             # Only skip the build if it's using the most recent version
-            if [ $FFMPEG_VER -ge 30402 ]; then
+            if [ $FFMPEG_VER -ge 30401 ]; then
                 return
             fi
         fi
