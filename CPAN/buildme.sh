@@ -463,7 +463,7 @@ elif [ "$OS" = "SunOS" ]; then
         echo "ERROR: Please install GNU make (gmake)"
         exit
     fi 
-    export MAKE="/usr/bin/gmake -j4"
+    export MAKE="/usr/bin/gmake"
 else
     # Support a newer make if available, needed on ReadyNAS                                                                              
     if [ -x /usr/local/bin/make ]; then                                               
