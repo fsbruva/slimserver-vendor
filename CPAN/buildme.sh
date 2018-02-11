@@ -1404,6 +1404,10 @@ function build_ffmpeg {
     if [ "$ARCH" = "x86_64-linux-thread-multi" -o "$ARCH" = "amd64-freebsd-thread-multi" -o "$ARCH" = "i86pc-solaris-thread-multi-64int" ]; then
         FFOPTS="$FFOPTS --disable-mmx"
     fi
+    # On Solaris/Illumos there are issues using asm together with h264 when linking libmediascan.
+    if [ "$ARCH" = "i86pc-solaris-thread-multi-64int" ]; then
+        FFOPTS="$FFOPTS --disable-asm"
+    fi
     # Catch all FreeBSD amd64's here, using the '=~' to glob
     # Need arch options, disable the mmx's
     if [[ "$ARCH" =~ "amd64-freebsd" ]]; then
