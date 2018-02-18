@@ -463,7 +463,7 @@ elif [ "$OS" = "SunOS" ]; then
         echo "ERROR: Please install GNU make (gmake)"
         exit
     fi 
-    export MAKE=/usr/bin/gmake
+    export MAKE="/usr/bin/gmake"
 else
     # Support a newer make if available, needed on ReadyNAS                                                                              
     if [ -x /usr/local/bin/make ]; then                                               
@@ -1039,26 +1039,9 @@ function build {
             # build libmediascan
             # XXX library does not link correctly on Darwin with libjpeg due to missing x86_64
             # in libjpeg.dylib, Perl still links OK because it uses libjpeg.a
-            tar_wrapper zxvf libmediascan-0.1.tar.gz
+            tar_wrapper zxvf libmediascan-0.2.tar.gz
 
-            if [ "$OSX_VER" = "10.9" -o "$OSX_VER" = "10.10" ]; then
-                patch -p0 < libmediascan01_patches/libmediascan-hints-darwin.pl.patch
-            fi
-
-            cd libmediascan-0.1
-
-            if [ "$OS" = "FreeBSD" ]; then
-            	patch -p1 < ../libmediascan01_patches/libmediascan-freebsd.patch
-            elif [ "$OS" = "SunOS" ]; then
-                patch -p0 < ../libmediascan01_patches/libmediascan-mediascan_unix.c-SunOS.patch 
-            fi
-            . ../update-config.sh
-
-            patch -p1 < ../libmediascan01_patches/libmediascan-ffmpeg.patch
-            patch -p0 < ../libmediascan01_patches/libmediascan-image_gif.c.patch
-            patch -p0 < ../libmediascan01_patches/libmediascan-Makefile.PL.patch
-            patch -p0 < ../libmediascan01_patches/libmediascan-Scan.xs.patch
-
+            cd libmediascan-0.2
 
             CC="$GCC" CXX="$GXX" CPP="$GPP" \
             CFLAGS="-I$BUILD/include $FLAGS $OSX_ARCH $OSX_FLAGS -O3" \
@@ -1077,7 +1060,7 @@ function build {
             build_module Sub-Uplevel-0.22 "" 0
             build_module Tree-DAG_Node-1.06 "" 0
             build_module Test-Warn-0.23 "" 0
-            cd libmediascan-0.1/bindings/perl
+            cd libmediascan-0.2/bindings/perl
             # LMS's hints file is OK and also has custom frameworks added
             
             MSOPTS="--with-static \
@@ -1109,7 +1092,7 @@ function build {
             fi
             
             cd ../../..
-            rm -rf libmediascan-0.1
+            rm -rf libmediascan-0.2
             ;;
     esac
 }
@@ -1362,21 +1345,23 @@ function build_giflib {
 }
 
 function build_ffmpeg {
+    FFMPEG_PREFIX="ffmpeg-3.4.1"
+    FFMPEG_VER_TO_BUILD=`echo ${FFMPEG_PREFIX##*-} | sed "s#\ *)\ *##g" | \
+            sed -e 's/\.\([0-9][0-9]\)/\1/g' -e 's/\.\([0-9]\)/0\1/g' -e 's/^[0-9]\{3,4\}$/&00/'`
     echo "build ffmpeg"
     if [ -f $BUILD/include/libavformat/avformat.h ]; then
         # Determine the version of the last-built ffmpeg
         if [ -f $BUILD/share/ffmpeg/VERSION ]; then
-            FFMPEG_VER=`cat $BUILD/share/ffmpeg/VERSION | sed "s#\ *)\ *##g" | \
+            FFMPEG_VER_FOUND=`cat $BUILD/share/ffmpeg/VERSION | sed "s#\ *)\ *##g" | \
             sed -e 's/\.\([0-9][0-9]\)/\1/g' -e 's/\.\([0-9]\)/0\1/g' -e 's/^[0-9]\{3,4\}$/&00/'`
             # Only skip the build if it's using the most recent version
-            if [ $FFMPEG_VER -ge 30402 ]; then
+            if [ $FFMPEG_VER_FOUND -ge $FFMPEG_VER_TO_BUILD ]; then
                 return
             fi
         fi
     fi
     
     # build ffmpeg, enabling only the things libmediascan uses
-    FFMPEG_PREFIX="ffmpeg-3.4.1"
     tar_wrapper jxf $FFMPEG_PREFIX.tar.bz2
     cd $FFMPEG_PREFIX
     . ../update-config.sh
@@ -1413,11 +1398,15 @@ function build_ffmpeg {
     if [ "$MACHINE" = "padre" ]; then
         FFOPTS="$FFOPTS --arch=sparc"
     fi
-    
+  
     # ASM doesn't work right on x86_64
     # XXX test --arch options on Linux
     if [ "$ARCH" = "x86_64-linux-thread-multi" -o "$ARCH" = "i86pc-solaris-thread-multi-64int" ]; then
         FFOPTS="$FFOPTS --disable-mmx"
+    fi
+    # On Solaris/Illumos there are issues using asm together with h264 when linking libmediascan.
+    if [ "$ARCH" = "i86pc-solaris-thread-multi-64int" ]; then
+        FFOPTS="$FFOPTS --disable-asm"
     fi
     # Catch all FreeBSD amd64's here, using the '=~' to glob
     # Need arch options, disable the mmx's
@@ -1510,12 +1499,12 @@ function build_ffmpeg {
         cp -f libswscale.a $BUILD/lib/libswscale.a
         
         FLAGS=$SAVED_FLAGS
-    else           
+    else
         CC="$GCC" CXX="$GXX" CPP="$GPP" \
         CFLAGS="$FLAGS -O3" \
         LDFLAGS="$FLAGS -O3" \
             ./configure $FFOPTS
-        
+
         $MAKE
         if [ $? != 0 ]; then
             echo "make failed"
