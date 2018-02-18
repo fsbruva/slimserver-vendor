@@ -1143,7 +1143,7 @@ function build_libjpeg {
         # Build i386/x86_64 versions of turbo
         tar_wrapper zxvf $TURBO_VER.tar.gz
         cd $TURBO_VER
-        
+
         # Disable features we don't need
         patch -p0 < ../libjpeg-turbo-jmorecfg.h.patch
 
