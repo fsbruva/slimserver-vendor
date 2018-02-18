@@ -1521,7 +1521,18 @@ function build_ffmpeg {
 
 function build_bdb {
     if [ -f $BUILD/include/db.h ]; then
-        return
+        # Determine the version of the last-built db
+        DB_MAJOR=`grep 'DB_VERSION_MAJOR' $BUILD/include/db.h | sed 's/.*_MAJOR[[:space:]]//g'`
+        if [ ! -z $DB_MAJOR ]; then
+            DB_MINOR=`grep 'DB_VERSION_MINOR' $BUILD/include/db.h | sed 's/.*_MINOR[[:space:]]//g'`
+            DB_PATCH=`grep 'DB_VERSION_PATCH' $BUILD/include/db.h | sed 's/.*_PATCH[[:space:]]//g'`
+            DB_VERSION=`echo "$DB_MAJOR"."$DB_MINOR"."$DB_PATCH" | sed "s/\ *)\ *//g" | \
+                        sed -e 's/\.\([0-9][0-9]\)/\1/g' -e 's/\.\([0-9]\)/0\1/g' -e 's/^[0-9]\{3,4\}$/&00/'`
+            # Only skip the build if it's using the right version
+            if [ $DB_VERSION -ge 60223 ]; then
+                return
+            fi
+        fi
     fi
     
     # --enable-posixmutexes is needed to build on ReadyNAS Sparc.
