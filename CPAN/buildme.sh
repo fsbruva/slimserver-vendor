@@ -25,7 +25,7 @@
 #   plus a path to a version of yasm and nasm
 #
 #   Tested versions (to be extended)
-#     OmniOSCE 151022 LTS (Perl 5.24.1)
+#     OmniOSCE 151026 LTS (Perl 5.26.2)
 #
 # Perl 5.12.4/5.14.1 note:
 #   You should build 5.12.4 using perlbrew and the following command. GCC's stack protector must be disabled
