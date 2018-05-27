@@ -974,7 +974,7 @@ function build {
             
             cd ..
             
-            build_module XML-Parser-2.41 "INSTALL_BASE=$PERL_BASE EXPATLIBPATH=$BUILD/lib EXPATINCPATH=$BUILD/include" 
+            build_module XML-Parser-2.41 "INSTALL_BASE=$PERL_BASE EXPATLIBPATH=$BUILD/lib EXPATINCPATH=$BUILD/include LD=$GCC" 
             
             rm -rf expat-2.0.1
             ;;
@@ -1045,7 +1045,7 @@ function build {
 
             CC="$GCC" CXX="$GXX" CPP="$GPP" \
             CFLAGS="-I$BUILD/include $FLAGS $OSX_ARCH $OSX_FLAGS -O3" \
-            LDFLAGS="-L$BUILD/lib $FLAGS $OSX_ARCH $OSX_FLAGS -O3" \
+            LDFLAGS="-L$BUILD/lib $FLAGS $OSX_ARCH $OSX_FLAGS -O3 " \
             OBJCFLAGS="-L$BUILD/lib $FLAGS $OSX_ARCH $OSX_FLAGS -O3" \
                 ./configure --prefix=$BUILD --with-bdb=$BUILD --disable-shared --disable-dependency-tracking
             $MAKE
@@ -1073,7 +1073,7 @@ function build {
                 --with-bdb-includes=$BUILD/include "
                 
             if [ $PERL_BIN ]; then
-                $PERL_BIN Makefile.PL $MSOPTS INSTALL_BASE=$PERL_BASE
+                $PERL_BIN Makefile.PL $MSOPTS INSTALL_BASE=$PERL_BASE LD=$GCC
                 $MAKE
                 if [ $? != 0 ]; then
                     echo "make failed, aborting"
@@ -1345,7 +1345,7 @@ function build_giflib {
 }
 
 function build_ffmpeg {
-    FFMPEG_PREFIX="ffmpeg-3.4.1"
+    FFMPEG_PREFIX="ffmpeg-4.0"
     FFMPEG_VER_TO_BUILD=`echo ${FFMPEG_PREFIX##*-} | sed "s#\ *)\ *##g" | \
             sed -e 's/\.\([0-9][0-9]\)/\1/g' -e 's/\.\([0-9]\)/0\1/g' -e 's/^[0-9]\{3,4\}$/&00/'`
     echo "build ffmpeg"
@@ -1371,7 +1371,7 @@ function build_ffmpeg {
     # x86: Disable all but the lowend MMX ASM
     # ARM: Disable all
     # PPC: Disable AltiVec
-    FFOPTS="--prefix=$BUILD --disable-ffmpeg --disable-ffplay --disable-ffprobe --disable-ffserver \
+    FFOPTS="--prefix=$BUILD --disable-ffmpeg --disable-ffplay --disable-ffprobe \
         --disable-avdevice --enable-pic \
         --disable-amd3dnow --disable-amd3dnowext --disable-sse --disable-ssse3 --disable-avx \
         --disable-armv5te --disable-armv6 --disable-armv6t2 --disable-mmi --disable-neon \
@@ -1395,6 +1395,10 @@ function build_ffmpeg {
         --enable-demuxer=matroska --enable-demuxer=mov --enable-demuxer=mpegps --enable-demuxer=mpegts --enable-demuxer=mpegvideo \
         --enable-protocol=file --cc=$GCC --cxx=$GXX"
 
+    if [ $FFMPEG_VER_TO_BUILD -lt 400 ]; then
+        FFOPTS="FFOPTS --disable-ffserver"
+    fi
+
     if [ "$MACHINE" = "padre" ]; then
         FFOPTS="$FFOPTS --arch=sparc"
     fi
@@ -1403,10 +1407,6 @@ function build_ffmpeg {
     # XXX test --arch options on Linux
     if [ "$ARCH" = "x86_64-linux-thread-multi" -o "$ARCH" = "amd64-freebsd-thread-multi" -o "$ARCH" = "i86pc-solaris-thread-multi-64int" ]; then
         FFOPTS="$FFOPTS --disable-mmx"
-    fi
-    # On Solaris/Illumos there are issues using asm together with h264 when linking libmediascan.
-    if [ "$ARCH" = "i86pc-solaris-thread-multi-64int" ]; then
-        FFOPTS="$FFOPTS --disable-asm"
     fi
     # Catch all FreeBSD amd64's here, using the '=~' to glob
     # Need arch options, disable the mmx's
@@ -1417,7 +1417,7 @@ function build_ffmpeg {
             FFOPTS="$FFOPTS --disable-asm"
         fi
     fi
-    
+
     if [ "$OS" = "Darwin" ]; then
         SAVED_FLAGS=$FLAGS
         
@@ -1444,7 +1444,7 @@ function build_ffmpeg {
         $MAKE clean
         FLAGS="-arch i386 -O3 $OSX_FLAGS"      
         CFLAGS="$FLAGS" \
-        LDFLAGS="$FLAGS" \
+        LDFLAGS="$FLAGS " \
             ./configure $FFOPTS --arch=x86_32
         
         $MAKE
@@ -1539,7 +1539,7 @@ function build_bdb {
 
     CC="$GCC" CXX="$GXX" CPP="$GPP" \
     CFLAGS="$FLAGS $OSX_ARCH $OSX_FLAGS -O3" \
-    LDFLAGS="$FLAGS $OSX_ARCH $OSX_FLAGS -O3" \
+    LDFLAGS="$FLAGS $OSX_ARCH $OSX_FLAGS -O3 " \
         ../dist/configure --prefix=$BUILD $MUTEX \
         --with-cryptography=no -disable-hash --disable-queue --disable-replication --disable-statistics --disable-verify \
         --disable-dependency-tracking --disable-shared
