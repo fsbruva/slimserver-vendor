@@ -1069,7 +1069,7 @@ function build {
                 --with-bdb-includes=$BUILD/include"
 
             if [ $PERL_BIN ]; then
-                $PERL_BIN Makefile.PL $MSOPTS INSTALL_BASE=$PERL_BASE LD=$GCC
+                $PERL_BIN Makefile.PL $MSOPTS INSTALL_BASE=$PERL_BASE
                 $MAKE
                 if [ $? != 0 ]; then
                     echo "make failed, aborting"
@@ -1411,6 +1411,13 @@ function build_ffmpeg {
         if [[ `sysctl -n security.jail.jailed` == 1 ]]; then
             FFOPTS="$FFOPTS --disable-asm"
         fi
+    fi
+
+    # ASM does not work on Illumos/OmniOS, so just disable it.
+    # Performance should be okay since we are just scanning ...
+    # To be solved later ...
+    if [ "$ARCH" = "i86pc-solaris-thread-multi-64int" ]; then
+        FFOPTS="$FFOPTS --disable-asm"
     fi
 
     if [ "$OS" = "Darwin" ]; then
