@@ -1413,13 +1413,6 @@ function build_ffmpeg {
         fi
     fi
 
-    # ASM does not work on Illumos/OmniOS, so just disable it.
-    # Performance should be okay since we are just scanning ...
-    # To be solved later ...
-    if [ "$ARCH" = "i86pc-solaris-thread-multi-64int" ]; then
-        FFOPTS="$FFOPTS --disable-asm"
-    fi
-
     if [ "$OS" = "Darwin" ]; then
         SAVED_FLAGS=$FLAGS
 
