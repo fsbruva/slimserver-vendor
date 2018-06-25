@@ -795,7 +795,8 @@ function build {
             ;;
 
         Encode::Detect)
-            if [[ "$OS" == "FreeBSD" && `sysctl -n security.jail.jailed` == 1 ]]; then
+            if [[ "$OS" == "FreeBSD" && `sysctl -n security.jail.jailed` == 1 && $PERL_MINOR_VER -le 10 ]]; then
+                # Tests fail in jails with old Perl
                 build_module Data-Dump-1.19 "" 0
             else
                 build_module Data-Dump-1.19
