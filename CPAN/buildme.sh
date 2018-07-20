@@ -1417,15 +1417,14 @@ function build_ffmpeg {
   
     # ASM doesn't work right on x86_64
     # XXX test --arch options on Linux
-    if [ "$ARCH" = "x86_64-linux-thread-multi" -o "$ARCH" = "amd64-freebsd-thread-multi" -o "$ARCH" = "i86pc-solaris-thread-multi-64int" ]; then
+    if [[ "$ARCH" = "x86_64-linux-thread-multi" || "$ARCH" =~ "amd64-freebsd" || "$ARCH" = "i86pc-solaris-thread-multi-64int" ]]; then
         FFOPTS="$FFOPTS --disable-mmx"
     fi
-    # Catch all FreeBSD amd64's here, using the '=~' to glob
-    # Need arch options, disable the mmx's
+    # FreeBSD amd64 needs arch option
     if [[ "$ARCH" =~ "amd64-freebsd" ]]; then
-         FFOPTS="$FFOPTS --arch=amd64 --disable-mmx"
-        # Older Jails can't seem to do any asm, so don't try.
-        if [[ `sysctl -n security.jail.jailed` == 1 ]]; then
+        FFOPTS="$FFOPTS --arch=x86"
+        # FFMPEG has known issues with GCC 4.2. See: https://trac.ffmpeg.org/ticket/3970
+        if [[ "$CC_IS_GCC" == true && "$CC_VERSION" -ge 40200 && "$CC_VERSION" -lt 40300 ]]; then
             FFOPTS="$FFOPTS --disable-asm"
         fi
     fi
