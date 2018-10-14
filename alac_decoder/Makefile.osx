@@ -1,6 +1,6 @@
-CC=gcc
+CC?=gcc
 RM=rm -f
-CFLAGS=-ggdb -O3 -W -Wall -arch i386 -arch ppc
+CFLAGS=-ggdb -O3 -W -Wall -arch i386
 
 C_SOURCES=alac.c \
           demux.c \
@@ -11,7 +11,7 @@ C_SOURCES=alac.c \
 OBJECTS=$(C_SOURCES:.c=.o)
 
 alac: $(OBJECTS)
-	$(CC) -arch i386 -arch ppc -o alac $(OBJECTS)
+	$(CC) -arch i386 -o alac $(OBJECTS)
 
 %.o: %.c
 	$(CC) -c $(CFLAGS) $< -o $@

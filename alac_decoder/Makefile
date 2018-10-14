@@ -1,4 +1,4 @@
-CC=gcc
+CC?=gcc
 RM=rm -f
 CFLAGS=-ggdb -O3 -W -Wall
 
