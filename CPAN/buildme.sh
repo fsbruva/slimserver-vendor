@@ -1063,7 +1063,7 @@ function build {
             CFLAGS="-I$BUILD/include $FLAGS $OSX_ARCH $OSX_FLAGS -O3" \
             LDFLAGS="-L$BUILD/lib $FLAGS $OSX_ARCH $OSX_FLAGS -O3 " \
             OBJCFLAGS="-L$BUILD/lib $FLAGS $OSX_ARCH $OSX_FLAGS -O3" \
-                ./configure --prefix=$BUILD --with-bdb=$BUILD --disable-shared --disable-dependency-tracking
+                ./configure -q --prefix=$BUILD --disable-shared --disable-dependency-tracking
             $MAKE
             if [ $? != 0 ]; then
                 echo "make failed"
@@ -1125,7 +1125,7 @@ function build_libexif {
 
     CFLAGS="$FLAGS $OSX_ARCH $OSX_FLAGS -O3" \
     LDFLAGS="$FLAGS $OSX_ARCH $OSX_FLAGS -O3" \
-        ./configure --prefix=$BUILD \
+        ./configure -q --prefix=$BUILD \
         --disable-dependency-tracking
     $MAKE
     if [ $? != 0 ]; then
@@ -1158,7 +1158,7 @@ function build_libjpeg {
         CFLAGS="-O3 $OSX_FLAGS" \
         CXXFLAGS="-O3 $OSX_FLAGS" \
         LDFLAGS="$OSX_FLAGS" \
-            ./configure --prefix=$BUILD --host x86_64-apple-darwin NASM=/usr/local/bin/nasm \
+            ./configure -q --prefix=$BUILD --host x86_64-apple-darwin NASM=/usr/local/bin/nasm \
             --disable-dependency-tracking
         $MAKE
         if [ $? != 0 ]; then
@@ -1174,7 +1174,7 @@ function build_libjpeg {
         CFLAGS="-O3 -m32 $OSX_FLAGS" \
         CXXFLAGS="-O3 -m32 $OSX_FLAGS" \
         LDFLAGS="-m32 $OSX_FLAGS" \
-            ./configure --prefix=$BUILD NASM=/usr/local/bin/nasm \
+            ./configure -q --prefix=$BUILD NASM=/usr/local/bin/nasm \
             --disable-dependency-tracking
         $MAKE
         if [ $? != 0 ]; then
@@ -1204,7 +1204,7 @@ function build_libjpeg {
         CFLAGS="-O3 -m32 $OSX_FLAGS" \
         CXXFLAGS="-O3 -m32 $OSX_FLAGS" \
         LDFLAGS="-m32 $OSX_FLAGS" \
-            ./configure --prefix=$BUILD NASM=/usr/local/bin/nasm \
+            ./configure -q --prefix=$BUILD NASM=/usr/local/bin/nasm \
             --disable-dependency-tracking
         $MAKE
         if [ $? != 0 ]; then
@@ -1224,7 +1224,7 @@ function build_libjpeg {
 
         CFLAGS="-arch ppc -O3 $OSX_FLAGS" \
         LDFLAGS="-arch ppc -O3 $OSX_FLAGS" \
-            ./configure --prefix=$BUILD \
+            ./configure -q --prefix=$BUILD \
             --disable-dependency-tracking
         $MAKE
         if [ $? != 0 ]; then
@@ -1250,7 +1250,7 @@ function build_libjpeg {
         cp -fv ../libjpeg-turbo-jmorecfg.h jmorecfg.h
 
         CFLAGS="$FLAGS $OSX_ARCH $OSX_FLAGS" CXXFLAGS="$FLAGS $OSX_ARCH $OSX_FLAGS" LDFLAGS="$FLAGS $OSX_ARCH $OSX_FLAGS" \
-            ./configure --prefix=$BUILD --disable-dependency-tracking --without-simd
+            ./configure -q --prefix=$BUILD --disable-dependency-tracking
         $MAKE
         if [ $? != 0 ]; then
             echo "make failed"
@@ -1270,7 +1270,7 @@ function build_libjpeg {
 
         CFLAGS="$FLAGS $OSX_ARCH $OSX_FLAGS -O3" \
         LDFLAGS="$FLAGS $OSX_ARCH $OSX_FLAGS -O3" \
-            ./configure --prefix=$BUILD \
+            ./configure -q --prefix=$BUILD \
             --disable-dependency-tracking
         $MAKE
         if [ $? != 0 ]; then
@@ -1303,8 +1303,8 @@ function build_libpng {
     CFLAGS="$FLAGS $OSX_ARCH $OSX_FLAGS -O3" \
     CPPFLAGS="$FLAGS $OSX_ARCH $OSX_FLAGS -O3 -DFA_XTRA" \
     LDFLAGS="$FLAGS $OSX_ARCH $OSX_FLAGS -O3" \
-        ./configure --prefix=$BUILD \
-        --disable-dependency-tracking 
+        ./configure -q --prefix=$BUILD \
+        --disable-dependency-tracking
     $MAKE && $MAKE check
     if [ $? != 0 ]; then
         echo "make failed"
@@ -1341,7 +1341,7 @@ function build_giflib {
     . ../update-config.sh
     CFLAGS="$FLAGS $OSX_ARCH $OSX_FLAGS -O3" \
     LDFLAGS="$FLAGS $OSX_ARCH $OSX_FLAGS -O3" \
-        ./configure --prefix=$BUILD \
+        ./configure -q --prefix=$BUILD \
         --disable-dependency-tracking
     $MAKE
     if [ $? != 0 ]; then
@@ -1435,7 +1435,7 @@ function build_ffmpeg {
             FLAGS="-arch x86_64 -O3 -fPIC $OSX_FLAGS"
             CFLAGS="$FLAGS" \
             LDFLAGS="$FLAGS" \
-                ./configure $FFOPTS --arch=x86_64
+                ./configure -q $FFOPTS --arch=x86_64
 
             $MAKE
             if [ $? != 0 ]; then
@@ -1453,8 +1453,8 @@ function build_ffmpeg {
         $MAKE clean
         FLAGS="-arch i386 -O3 $OSX_FLAGS"
         CFLAGS="$FLAGS" \
-        LDFLAGS="$FLAGS " \
-            ./configure $FFOPTS --arch=x86_32
+        LDFLAGS="$FLAGS" \
+            ./configure -q $FFOPTS --arch=x86_32
 
         $MAKE
         if [ $? != 0 ]; then
@@ -1473,7 +1473,7 @@ function build_ffmpeg {
             FLAGS="-arch ppc -O3 $OSX_FLAGS"
             CFLAGS="$FLAGS" \
             LDFLAGS="$FLAGS" \
-                ./configure $FFOPTS --arch=ppc --disable-altivec
+                ./configure -q $FFOPTS --arch=ppc --disable-altivec
 
             $MAKE
             if [ $? != 0 ]; then
@@ -1512,7 +1512,7 @@ function build_ffmpeg {
     else
         CFLAGS="$FLAGS -O3" \
         LDFLAGS="$FLAGS -O3" \
-            ./configure $FFOPTS
+            ./configure -q $FFOPTS
 
         $MAKE
         if [ $? != 0 ]; then
@@ -1552,8 +1552,8 @@ function build_bdb {
        popd
     fi
     CFLAGS="$FLAGS $OSX_ARCH $OSX_FLAGS -O3" \
-    LDFLAGS="$FLAGS $OSX_ARCH $OSX_FLAGS -O3 " \
-        ../dist/configure --prefix=$BUILD $MUTEX \
+    LDFLAGS="$FLAGS $OSX_ARCH $OSX_FLAGS -O3" \
+        ../dist/configure -q --prefix=$BUILD $MUTEX \
         --with-cryptography=no -disable-hash --disable-queue --disable-replication --disable-statistics --disable-verify \
         --disable-dependency-tracking --disable-shared
     $MAKE
