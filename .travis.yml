@@ -28,8 +28,7 @@ matrix:
     - name: "perl_osx"
       language: cpp
       os: osx
-      env:
-        - CC=clang && CXX=clang++
+      compiler: clang
       script:
         - perl -V
         - cd CPAN

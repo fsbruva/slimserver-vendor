@@ -44,7 +44,7 @@
 RUN_TESTS=1
 USE_HINTS=1
 CLEAN=1
-FLAGS="-fPIC"
+FLAGS="-w -fPIC"
 
 function usage {
     cat <<EOF
