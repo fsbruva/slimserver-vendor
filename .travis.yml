@@ -7,8 +7,6 @@ env:
   - CC=gcc && CXX=g++
   - CC=clang && CXX=clang++
 
-cache: ccache
-
 addons:
   apt:
     packages:
@@ -28,7 +26,8 @@ matrix:
     - name: "perl_osx"
       language: cpp
       os: osx
-      compiler: clang
+      env: 
+        - EVERYTHING=awesome
       script:
         - perl -V
         - cd CPAN

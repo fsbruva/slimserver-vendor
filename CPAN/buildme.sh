@@ -1435,7 +1435,7 @@ function build_ffmpeg {
             FLAGS="-arch x86_64 -O3 -fPIC $OSX_FLAGS"
             CFLAGS="$FLAGS" \
             LDFLAGS="$FLAGS" \
-                ./configure -q $FFOPTS --arch=x86_64
+                ./configure $FFOPTS --arch=x86_64
 
             $MAKE
             if [ $? != 0 ]; then
@@ -1454,7 +1454,7 @@ function build_ffmpeg {
         FLAGS="-arch i386 -O3 $OSX_FLAGS"
         CFLAGS="$FLAGS" \
         LDFLAGS="$FLAGS" \
-            ./configure -q $FFOPTS --arch=x86_32
+            ./configure $FFOPTS --arch=x86_32
 
         $MAKE
         if [ $? != 0 ]; then
@@ -1473,7 +1473,7 @@ function build_ffmpeg {
             FLAGS="-arch ppc -O3 $OSX_FLAGS"
             CFLAGS="$FLAGS" \
             LDFLAGS="$FLAGS" \
-                ./configure -q $FFOPTS --arch=ppc --disable-altivec
+                ./configure $FFOPTS --arch=ppc --disable-altivec
 
             $MAKE
             if [ $? != 0 ]; then
@@ -1512,7 +1512,7 @@ function build_ffmpeg {
     else
         CFLAGS="$FLAGS -O3" \
         LDFLAGS="$FLAGS -O3" \
-            ./configure -q $FFOPTS
+            ./configure $FFOPTS
 
         $MAKE
         if [ $? != 0 ]; then
