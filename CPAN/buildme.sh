@@ -159,8 +159,7 @@ if [ "$OS" = "FreeBSD" ]; then
 fi
 
 for i in $GCC $GXX rsync make ; do
-    which $i > /dev/null
-    if [ $? -ne 0 ] ; then
+    if ! [ -x "$(command -v $i)" ] ; then
         echo "$i not found - please install it"
         exit 1
     fi
@@ -232,10 +231,8 @@ else
     GCC_LIBCPP=false
 fi
 
-which yasm > /dev/null
-if [ $? -ne 0 ] ; then
-    which nasm > /dev/null
-    if [ $? -ne 0 ] ; then
+if ! [ -x "$(command -v yasm)" ]; then
+    if ! [ -x "$(command -v nasm)" ]; then
         echo "please install either yasm or nasm."
         exit 1
     fi
@@ -277,8 +274,7 @@ if [ "$OS" = "FreeBSD" ]; then
 	done
 fi
 
-find /usr/lib/ -maxdepth 1 | grep libungif
-if [ $? -eq 0 ] ; then
+if [ -n "$(find /usr/lib/ -maxdepth 1 -name '*libungif*' -print -quit)" ] ; then
     echo "ON SOME PLATFORMS (Ubuntu/Debian at least) THE ABOVE LIBRARIES MAY NEED TO BE TEMPORARILY REMOVED TO ALLOW THE BUILD TO WORK"
 fi
 

@@ -1,13 +1,11 @@
 language: perl
 perl:
-  - "5.20"
   - "5.18"
 os:
   - linux
 
 env:
-  - MATRIX_EVAL="CC=gcc && CXX=g++"
-  - MATRIX_EVAL="CC=clang && CXX=clang++"
+  - CC=clang && CXX=clang++
 
 cache: ccache
 
@@ -21,86 +19,17 @@ addons:
 
 matrix:
   include:
-    - name: "alac_linux_clang"
-      language: c
-      os: linux
-      compiler: clang
+    - name: "perl_osx"
+      language: cpp
+      os: osx
       script:
-        - cd alac_decoder
-        - make
-
-    - name: "alac_linux_gcc"
-      language: c
-      os: linux
-      compiler: gcc
-      script:
-        - cd alac_decoder
-        - make
-
-    - os: linux
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-          packages:
-            - g++-4.9
-            - nasm
-            - rsync
-            - zlib1g-dev
-            - libmodule-install-perl
-      env:
-         - MATRIX_EVAL="CC=gcc-4.9 && CXX=g++-4.9"
-
-    - os: linux
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-          packages:
-            - g++-5
-            - nasm
-            - rsync
-            - zlib1g-dev
-            - libmodule-install-perl
-      env:
-         - MATRIX_EVAL="CC=gcc-5 && CXX=g++-5"
-
-    - os: linux
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-          packages:
-            - g++-6
-            - nasm
-            - rsync
-            - zlib1g-dev
-            - libmodule-install-perl
-      env:
-        - MATRIX_EVAL="CC=gcc-6 && CXX=g++-6"
-
-    - os: linux
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-          packages:
-            - g++-7
-            - nasm
-            - rsync
-            - zlib1g-dev
-            - libmodule-install-perl
-      env:
-        - MATRIX_EVAL="CC=gcc-7 && CXX=g++-7"
-
-before_install:
-    - eval "${MATRIX_EVAL}"
+        - perl -V
 
 install: true
 
 script:
   - cd CPAN
-  - bash buildme.sh
+  - bash -o errexit buildme.sh
 
 notifications:
   email:
