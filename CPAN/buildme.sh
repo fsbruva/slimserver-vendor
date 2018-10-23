@@ -496,9 +496,9 @@ elif [ "$OS" = "SunOS" ]; then
 else
     # Support a newer make if available, needed on ReadyNAS
     if [ -x /usr/local/bin/make ]; then
-        export MAKE=/usr/local/bin/make
+        export MAKE="/usr/local/bin/make -s"
     else
-        export MAKE=/usr/bin/make
+        export MAKE="/usr/bin/make -s"
     fi
 fi
 

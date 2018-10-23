@@ -20,6 +20,7 @@ addons:
     packages:
       - nasm
       - rsync
+      - gettext
 
 
 matrix:
@@ -28,17 +29,17 @@ matrix:
       language: cpp
       os: osx
       env:
-        - MATRIX_EVAL="test"
+        - CC=clang && CXX=clang++
       script:
         - perl -V
         - cd CPAN
-        - bash -o errexit buildme.sh
+        - bash -o errexit buildme.sh Media::Scan
 
 install: true
 
 script:
   - cd CPAN
-  - bash -o errexit buildme.sh
+#  - bash -o errexit buildme.sh
 
 notifications:
   email:
