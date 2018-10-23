@@ -1,11 +1,14 @@
---- bindings/perl/Makefile.PL.orig	2011-09-26 17:42:29.000000000 +0000
-+++ bindings/perl/Makefile.PL	2018-10-21 21:04:15.219370000 +0000
-@@ -357,5 +357,7 @@
+--- bindings/perl/Makefile.PL.orig	2018-10-23 02:59:34.392282000 +0000
++++ bindings/perl/Makefile.PL	2018-10-23 03:04:00.199190000 +0000
+@@ -357,5 +357,11 @@
  if ( $^O =~ /Win32/i ) {
      $opts{LDDLFLAGS} = '-dll -nologo -nodefaultlib -opt:ref,icf  -libpath:"C:\Perl\lib\CORE" -machine:x86 -manifest -ManifestFile:$@.manifest';
  }
--
++elsif ( $^O =~ /darwin/i ) {
++    $opts{LDDLFLAGS} = '-shared -Wl';
++}
 +else {
 +    $opts{LDDLFLAGS} = '-shared -Wl,-Bsymbolic';
 +}
+
  WriteMakefile(%opts);
