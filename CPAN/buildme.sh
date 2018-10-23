@@ -1546,7 +1546,7 @@ function build_bdb {
     . ../../update-config.sh
     cd ../build_unix
 
-    if [ "$OS" = "Darwin" -o "$OS" = "FreeBSD" ]; then
+    if [ "$OS" = "Darwin" -o "$OS" = "FreeBSD" -o "$CC_IS_CLANG" == true ]; then
        pushd ..
        patch -p0 < ../db51-src_dbinc_atomic.patch
        popd

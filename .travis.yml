@@ -3,8 +3,8 @@ perl:
   - "5.18"
 os:
   - linux
-
 env:
+  - CC=gcc && CXX=g++
   - CC=clang && CXX=clang++
 
 cache: ccache
@@ -16,14 +16,23 @@ addons:
       - rsync
       - zlib1g-dev
       - libmodule-install-perl
+  homebrew:
+    packages:
+      - nasm
+      - rsync
+
 
 matrix:
   include:
     - name: "perl_osx"
       language: cpp
       os: osx
+      env:
+        - MATRIX_EVAL="test"
       script:
         - perl -V
+        - cd CPAN
+        - bash -o errexit buildme.sh
 
 install: true
 
