@@ -1,21 +1,24 @@
 #!/bin/sh
 
-FLAC=1.2.1
-SOX=14.3.1
-OGG=1.1.4
-VORBIS=1.2.3
+SOX=14.4.3
+FLAC=1.3.2
+OGG=1.3.3
+OGG_GIT="-bc82844df068429d209e909da47b1f730b53b689"
+FLAC_GIT="-faafa4c82c31e5aed7bc7c0e87a379825372c6ac"
+SOX_GIT="-0be259eaa9ce3f3fa587a3ef0cf2c0b9c73167a2"
+VORBIS=1.3.6
+OPUS=1.2.1
+OPUSFILE=0.11
 MAD=0.15.1b
-WAVPACK=4.60.1
+MAD_SUB="-8"
+WAVPACK=5.1.0
 LOG=$PWD/config.log
-CHANGENO=`git show -s --format=%h`
+CHANGENO=$(git rev-parse --short HEAD)
 ARCH="osx"
 OUTPUT=$PWD/sox-build-$ARCH-$CHANGENO
 
-# Mac Universal Binary support
-#CFLAGS="-isysroot /Developer/SDKs/MacOSX10.4u.sdk -arch i386 -arch ppc -mmacosx-version-min=10.3"
-#LDFLAGS="-arch i386 -arch ppc"
-CFLAGS="-arch x86_64"
-LDFLAGS="-arch x86_64"
+CFLAGS="-mmacosx-version-min=10.6 -arch x86_64"
+LDFLAGS="-mmacosx-version-min=10.6 -arch x86_64"
 
 # Clean up
 rm -rf $OUTPUT
@@ -23,6 +26,8 @@ rm -rf flac-$FLAC
 rm -rf sox-$SOX
 rm -rf libogg-$OGG
 rm -rf libvorbis-$VORBIS
+rm -rf opus-$OPUS
+rm -rf opusfile-$OPUSFILE
 rm -rf libmad-$MAD
 rm -rf wavpack-$WAVPACK
 
@@ -32,7 +37,7 @@ date > $LOG
 
 ## Build Ogg first
 echo "Untarring libogg-$OGG.tar.gz..."
-tar -zxf libogg-$OGG.tar.gz 
+tar -zxf libogg-${OGG}${OGG_GIT}.tar.gz 
 cd libogg-$OGG
 echo "Configuring..."
 ./configure CFLAGS="$CFLAGS" LDFLAGS="$LDFLAGS" --disable-shared --disable-dependency-tracking >> $LOG
@@ -50,37 +55,55 @@ echo "Running make"
 make >> $LOG
 cd ..
 
+## Build Opus
+echo "Untarring opus-$OPUS.tar.gz..."
+tar -zxf opus-$OPUS.tar.gz
+cd opus-$OPUS
+echo "Configuring..."
+./configure CFLAGS="$CFLAGS" LDFLAGS="$LDFLAGS" --disable-extra-programs --enable-shared=no >> $LOG
+echo "Running make"
+make >> $LOG
+cd ..
+
+## Build Opusfile
+echo "Untarring opusfile-$OPUSFILE.tar.gz..."
+tar -zxf opusfile-$OPUSFILE.tar.gz
+cd opusfile-$OPUSFILE
+echo "Configuring..."
+CPF="-I$PWD/../libogg-$OGG/include -I$PWD/../opus-$OPUS/include"
+LDF="-L$PWD/../libogg-$OGG/src/.libs -L$PWD/../opus-$OPUS/.libs"
+./configure DEPS_CFLAGS="$CFLAGS $CPF" DEPS_LIBS="$LDFLAGS $LDF" --enable-shared=no --disable-examples --disable-doc >> $LOG
+echo "Running make"
+make >> $LOG
+cd ..
+
 ## Build FLAC
 # Mac: Disabled ASM code
 echo "Untarring flac-$FLAC.tar.gz..."
-tar -zxf flac-$FLAC.tar.gz 
+tar zxf flac-${FLAC}${FLAC_GIT}.tar.gz >> $LOG
 cd flac-$FLAC
 echo "Configuring..."
-./configure CFLAGS="$CFLAGS" LDFLAGS="$LDFLAGS" --with-ogg-includes=$PWD/../libogg-$OGG/include --with-ogg-libraries=$PWD/../libogg-$OGG/src/.libs/ --disable-shared --disable-xmms-plugin --disable-dependency-tracking --disable-asm-optimizations --disable-cpplibs >> $LOG
+./configure CFLAGS="$CFLAGS" LDFLAGS="$LDFLAGS" --with-ogg-includes=$PWD/../libogg-$OGG/include --with-ogg-libraries=$PWD/../libogg-$OGG/src/.libs/ --disable-shared --disable-xmms-plugin --disable-dependency-tracking --disable-cpplibs >> $LOG
 echo "Running make"
 make >> $LOG
 cd ..
 
 ## Build LibMAD
-# Mac: Disabled ASM code and Intel-specific optimizations
-# XXX: Not sure if fpm=64bit is right, but it compiles fine on 32-bit systems
-# MAD doesn't work with -isysroot
-#MADCFLAGS="-arch i386 -arch ppc -mmacosx-version-min=10.3"
-#echo "Untarring libmad-$MAD.tar.gz..."
-#tar -zxf libmad-$MAD.tar.gz
-#cd libmad-$MAD
-#echo "configuring..."
-#./configure CFLAGS="$MADCFLAGS" LDFLAGS="$LDFLAGS" --disable-shared --disable-dependency-tracking --disable-aso --enable-fpm=64bit >> $LOG
-#echo "Running make"
-#make >> $LOG
-#cd ..
+echo "Untarring libmad-$MAD.tar.gz..."
+tar -zxf libmad-${MAD}${MAD_SUB}.tar.gz
+cd libmad-$MAD
+echo "configuring..."
+./configure CFLAGS="$CFLAGS" LDFLAGS="$LDFLAGS" --disable-shared --disable-dependency-tracking --enable-fpm=64bit >> $LOG
+echo "Running make"
+make >> $LOG
+cd ..
 
 ## Build Wavpack
 echo "Untarring wavpack-$WAVPACK.tar.bz2..."
 tar -jxf wavpack-$WAVPACK.tar.bz2
 cd wavpack-$WAVPACK
 echo "Configuring..."
-./configure CFLAGS="$CFLAGS" LDFLAGS="$LDFLAGS" --disable-shared --disable-dependency-tracking >> $LOG
+./configure CFLAGS="$CFLAGS" LDFLAGS="$LDFLAGS" --disable-shared --disable-dependency-tracking --with-iconv=no --disable-apps >> $LOG
 echo "Running make"
 make >> $LOG
 # sox looks for wavpack/wavpack.h so we need to make a symlink
@@ -90,12 +113,14 @@ cd ../..
 
 ## finally, build SOX against FLAC
 echo "Untarring sox-$SOX.tar.gz..."
-tar -zxf sox-$SOX.tar.gz >> $LOG
+tar -zxf sox-${SOX}${SOX_GIT}.tar.gz >> $LOG
 cd sox-$SOX >> $LOG
+patch -p1 < ../02-restore-short-options.patch
+patch -p1 < ../03-version.patch
 echo "Configuring..."
-CPF="$CFLAGS -I$PWD/../libogg-$OGG/include -I$PWD/../libvorbis-$VORBIS/include -I$PWD/../wavpack-$WAVPACK/include -I$PWD/../flac-$FLAC/include -I$PWD/" 
-LDF="$LDFLAGS -L$PWD/../libogg-$OGG/src/.libs -L$PWD/../libvorbis-$VORBIS/lib/.libs -L$PWD/../wavpack-$WAVPACK/src/.libs -L$PWD/../flac-$FLAC/src/libFLAC/.libs"
-./configure CFLAGS="$CPF" LDFLAGS="$LDF" --with-flac --with-oggvorbis --without-mp3 --with-wavpack --without-id3tag --without-lame --without-ffmpeg --without-png --without-ladspa --disable-shared --without-oss --without-alsa --disable-symlinks --without-coreaudio --disable-dependency-tracking --prefix $OUTPUT >> $LOG
+CPF="-I$PWD/../libogg-$OGG/include -I$PWD/../libvorbis-$VORBIS/include -I$PWD/../opus-$OPUS/include -I$PWD/../wavpack-$WAVPACK/include -I$PWD/../flac-$FLAC/include -I$PWD/../libmad-$MAD"
+LDF="-L$PWD/../libogg-$OGG/src/.libs -L$PWD/../libvorbis-$VORBIS/lib/.libs -L$PWD/../opus-$OPUS/.libs -L$PWD/../wavpack-$WAVPACK/src/.libs -L$PWD/../libmad-$MAD/.libs -L$PWD/../flac-$FLAC/src/libFLAC/.libs"
+./configure CFLAGS="$CFLAGS $CPF" LDFLAGS="$LDFLAGS $LDF" OPUS_CFLAGS="-I$PWD/../opusfile-$OPUSFILE/include" OPUS_LIBS="-L$PWD/../opusfile-$OPUSFILE/.libs -lopusfile -lopus" --without-ao --without-pulseaudio --disable-openmp --with-flac --with-oggvorbis --with-opus --with-mp3 --with-wavpack --without-id3tag --without-lame --without-png --without-ladspa --disable-shared --without-oss --without-alsa --disable-symlinks --without-coreaudio --prefix $OUTPUT >> $LOG
 echo "Running make"
 make  >> $LOG
 echo "Running make install"
@@ -107,7 +132,9 @@ tar -zcvf $OUTPUT.tgz $OUTPUT
 rm -rf $OUTPUT
 rm -rf flac-$FLAC
 rm -rf sox-$SOX
+rm -rf opus-$OPUS
+rm -rf opusfile-$OPUSFILE
 rm -rf libogg-$OGG
 rm -rf libvorbis-$VORBIS
-#rm -rf libmad-$MAD
+rm -rf libmad-$MAD
 rm -rf wavpack-$WAVPACK
