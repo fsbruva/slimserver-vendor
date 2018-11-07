@@ -693,7 +693,7 @@ function build {
                     ICUFLAGS="$FLAGS -DU_USING_ICU_NAMESPACE=0"
                     ICUOS="Linux"
                 elif [ "$OS" = 'SunOS' ]; then
-                    ICUFLAGS="$FLAGS -D_XPG6 -DU_USING_ICU_NAMESPACE=0"
+                    ICUFLAGS="$FLAGS -D_XPG6 -DU_USING_ICU_NAMESPACE=0 -DU_CHARSET_IS_UTF8=1"
                     ICUOS="Solaris/GCC"
                 elif [ "$OS" = 'FreeBSD' ]; then
                     ICUFLAGS="$FLAGS -DU_USING_ICU_NAMESPACE=0"
@@ -848,19 +848,20 @@ function build {
             build_module Test-NoWarnings-1.02 "" 0
             build_module Net-IDN-Encode-2.400
 
-            tar_wrapper zxf Net-SSLeay-1.82.tar.gz
-            cd Net-SSLeay-1.82
+            tar_wrapper zxf Net-SSLeay-1.85.tar.gz
+            cd Net-SSLeay-1.85
             patch -p0 < ../NetSSLeay-SunOS-NoPrompt.patch
+            patch -p0 < ../NetSSLeay-OpenSSL-SunOS.patch
             cd ..
 
-            build_module Net-SSLeay-1.82
+            build_module Net-SSLeay-1.85
 
-            tar_wrapper zxf IO-Socket-SSL-2.052.tar.gz
-            cd IO-Socket-SSL-2.052
+            tar_wrapper zxf IO-Socket-SSL-2.060.tar.gz
+            cd IO-Socket-SSL-2.060
             patch -p0 < ../IOSocketSSL-NoPrompt-SunOS.patch
             cd ..
 
-            build_module IO-Socket-SSL-2.052
+            build_module IO-Socket-SSL-2.060
 	    ;;
 
         JSON::XS)
