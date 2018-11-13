@@ -851,7 +851,7 @@ function build {
             tar_wrapper zxf Net-SSLeay-1.85.tar.gz
             cd Net-SSLeay-1.85
             patch -p0 < ../NetSSLeay-SunOS-NoPrompt.patch
-            patch -p0 < ../NetSSLeay-OpenSSL-SunOS.patch
+            patch -p0 < ../NetSSLeay-OpenSSL.patch
             cd ..
 
             build_module Net-SSLeay-1.85
@@ -1061,9 +1061,9 @@ function build {
             # build libmediascan
             # XXX library does not link correctly on Darwin with libjpeg due to missing x86_64
             # in libjpeg.dylib, Perl still links OK because it uses libjpeg.a
-            tar_wrapper zxvf libmediascan-0.2.tar.gz
+            tar_wrapper zxvf libmediascan-0.3.tar.gz
 
-            cd libmediascan-0.2
+            cd libmediascan-0.3
 
             CFLAGS="-I$BUILD/include $FLAGS $OSX_ARCH $OSX_FLAGS -O3" \
             LDFLAGS="-L$BUILD/lib $FLAGS $OSX_ARCH $OSX_FLAGS -O3 " \
@@ -1081,7 +1081,7 @@ function build {
             build_module Sub-Uplevel-0.22 "" 0
             build_module Tree-DAG_Node-1.06 "" 0
             build_module Test-Warn-0.23 "" 0
-            cd libmediascan-0.2/bindings/perl
+            cd libmediascan-0.3/bindings/perl
             # LMS's hints file is OK and also has custom frameworks added
 
             MSOPTS="--with-static \
@@ -1094,7 +1094,11 @@ function build {
                 --with-bdb-includes=$BUILD/include"
 
             if [ $PERL_BIN ]; then
-                $PERL_BIN Makefile.PL $MSOPTS INSTALL_BASE=$PERL_BASE
+                if [ "$OS" = "SunOS" ]; then
+                    $PERL_BIN Makefile.PL $MSOPTS INSTALL_BASE=$PERL_BASE LD=gld
+                else
+                    $PERL_BIN Makefile.PL $MSOPTS INSTALL_BASE=$PERL_BASE
+                fi
                 $MAKE
                 if [ $? != 0 ]; then
                     echo "make failed, aborting"
@@ -1113,7 +1117,7 @@ function build {
             fi
 
             cd ../../..
-            rm -rf libmediascan-0.2
+            rm -rf libmediascan-0.3
             ;;
     esac
 }
