@@ -1089,6 +1089,8 @@ function build {
                 --with-bdb-includes=$BUILD/include"
 
             if [ $PERL_BIN ]; then
+	        export PERL5LIB=$PERL_BASE/lib/perl5
+		
                 $PERL_BIN Makefile.PL $MSOPTS INSTALL_BASE=$PERL_BASE
                 $MAKE
                 if [ $? != 0 ]; then
