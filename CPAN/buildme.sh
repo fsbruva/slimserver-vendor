@@ -517,6 +517,25 @@ function tar_wrapper {
     echo "tar done"
 }
 
+# get overwrite default perl config args
+if [ "${PERL_LD+X}" = "X" ]; then
+    PERL_CONFIG_CUSTOM="LD=$PERL_LD"
+fi
+if [ "${PERL_LDDLFLAGS+X}" = "X" ]; then
+    PERL_CONFIG_CUSTOM="$PERL_CONFIG_CUSTOM LDDLFLAGS=$PERL_LDDLFLAGS"
+fi
+if [ "${PERL_CCDLFLAGS+X}" = "X" ]; then
+    PERL_CONFIG_CUSTOM="$PERL_CONFIG_CUSTOM CCDLFLAGS=$PERL_CCDLFLAGS"
+fi
+if [ "${PERL_CCCDLFLAGS+X}" = "X" ]; then
+    PERL_CONFIG_CUSTOM="$PERL_CONFIG_CUSTOM CCCDLFLAGS=$PERL_CCCDLFLAGS"
+fi
+if [ "${PERL_CCFLAGS+X}" = "X" ]; then
+    PERL_CONFIG_CUSTOM="$PERL_CONFIG_CUSTOM CCLFLAGS=$PERL_CCFLAGS"
+fi
+if [ "${PERL_CPPFLAGS+X}" = "X" ]; then
+    PERL_CONFIG_CUSTOM="$PERL_CONFIG_CUSTOM CPPFLAGS=$PERL_CPPFLAGS"
+fi
 
 # $1 = module to build
 # $2 = Makefile.PL arg(s)
@@ -551,8 +570,8 @@ function build_module {
     fi
     if [ $PERL_BIN ]; then
         export PERL5LIB=$PERL_BASE/lib/perl5
-
-        $PERL_BIN Makefile.PL INSTALL_BASE=$PERL_BASE $makefile_args
+      
+        $PERL_BIN Makefile.PL INSTALL_BASE=$PERL_BASE $PERL_CONFIG_CUSTOM $makefile_args
         if [ $local_run_tests -eq 1 ]; then
             $MAKE test
         else
@@ -618,7 +637,7 @@ function build {
                 cp -Rv ../hints .
                 export PERL5LIB=$PERL_BASE/lib/perl5
 
-                $PERL_BIN Makefile.PL INSTALL_BASE=$PERL_BASE $2
+                $PERL_BIN Makefile.PL INSTALL_BASE=$PERL_BASE $PERL_CONFIG_CUSTOM $2
                 if [ $RUN_TESTS -eq 1 ]; then
                     $MAKE test
                 else
@@ -742,7 +761,7 @@ function build {
                 # Running 5.8
                 export PERL5LIB=$PERL_BASE/lib/perl5
 
-                $PERL_BIN Makefile.PL INSTALL_BASE=$PERL_BASE $2
+                $PERL_BIN Makefile.PL INSTALL_BASE=$PERL_BASE $PERL_CONFIG_CUSTOM $2
 
                 if [ "$OS" = 'Darwin' ]; then
                     # OSX does not seem to properly find -lstdc++, so we need to hack the Makefile to add it
@@ -992,7 +1011,7 @@ function build {
 
             cd ..
 
-            build_module XML-Parser-2.41 "EXPATLIBPATH=$BUILD/lib EXPATINCPATH=$BUILD/include LD=$GCC"
+            build_module XML-Parser-2.41 "EXPATLIBPATH=$BUILD/lib EXPATINCPATH=$BUILD/include"
 
             rm -rf expat-2.0.1
             ;;
@@ -1091,7 +1110,7 @@ function build {
             if [ $PERL_BIN ]; then
                 export PERL5LIB=$PERL_BASE/lib/perl5
 		
-                $PERL_BIN Makefile.PL $MSOPTS INSTALL_BASE=$PERL_BASE
+                $PERL_BIN Makefile.PL $MSOPTS INSTALL_BASE=$PERL_BASE $PERL_CONFIG_CUSTOM
                 $MAKE
                 if [ $? != 0 ]; then
                     echo "make failed, aborting"
