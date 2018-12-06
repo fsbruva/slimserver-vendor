@@ -184,10 +184,12 @@ case $OS in
             echo "ERROR: Please install GNU make (gmake)"
             exit
         fi
+	export LD=/usr/bin/gld
+	export MAKE=/usr/bin/gmake
         export CFLAGS_COMMON="$CFLAGS_COMMON -m64"
-        export CFLAGS_COMMON="$CFLAGS_COMMON -m64"
+        export CXXFLAGS_COMMON="$CXXFLAGS_COMMON -m64"
         export LDFLAGS_COMMON="$LDFLAGS_COMMON"
-        export MAKE=/usr/bin/gmake
+	export LDDLFLAGS="$LDFLAGS_COMMON -shared -melf_x86_64"
     ;;
     Linux)
         #for i in libgif libz libgd ; do
