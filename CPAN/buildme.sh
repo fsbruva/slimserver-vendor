@@ -1057,7 +1057,7 @@ function build {
             # build libmediascan
             # XXX library does not link correctly on Darwin with libjpeg due to missing x86_64
             # in libjpeg.dylib, Perl still links OK because it uses libjpeg.a
-            tar_wrapper zxvf libmediascan-0.3.tar.gz
+            tar_wrapper zxf libmediascan-0.3.tar.gz
 
             cd libmediascan-0.3
 
@@ -1088,6 +1088,11 @@ function build {
                 --with-png-includes=$BUILD/include \
                 --with-gif-includes=$BUILD/include \
                 --with-bdb-includes=$BUILD/include"
+
+            # FreeBSD doesn't contain GNU gettext in the base. This only prevents exif logging.
+            if [ "$OS" = "FreeBSD" ]; then
+                MSOPTS="$MSOPTS --omit-intl"
+            fi
 
             if [ $PERL_BIN ]; then
                 if [ "$OS" = "SunOS" ]; then
@@ -1149,7 +1154,7 @@ function build_libjpeg {
     fi
 
     # build libjpeg-turbo on x86 platforms
-    TURBO_VER="libjpeg-turbo-1.5.2"
+    TURBO_VER="libjpeg-turbo-1.5.3"
     # skip on 10.9 until we've been able to build nasm from macports
     if [ "$OS" = "Darwin" -a "$OSX_VER" != "10.5" ]; then
         # Build i386/x86_64 versions of turbo
@@ -1157,7 +1162,7 @@ function build_libjpeg {
         cd $TURBO_VER
 
         # Disable features we don't need
-        cp -fv ../libjpeg-turbo-jmorecfg.h jmorecfg.h
+        patch -p0 < ../libjpeg-turbo-jmorecfg.h.patch
 
         # Build 64-bit fork
         CFLAGS="-O3 $OSX_FLAGS" \
@@ -1204,7 +1209,7 @@ function build_libjpeg {
         cd $TURBO_VER
 
         # Disable features we don't need
-        cp -fv ../libjpeg-turbo-jmorecfg.h jmorecfg.h
+        patch -p0 < ../libjpeg-turbo-jmorecfg.h.patch
 
         CFLAGS="-O3 -m32 $OSX_FLAGS" \
         CXXFLAGS="-O3 -m32 $OSX_FLAGS" \
@@ -1246,13 +1251,13 @@ function build_libjpeg {
         mv -fv libjpeg.a $BUILD/lib/libjpeg.a
         rm -fv libjpeg-i386.a libjpeg-ppc.a
 
-    elif [ "$ARCH" = "i386-linux-thread-multi" -o "$ARCH" = "x86_64-linux-thread-multi" -o "$ARCH" = "i86pc-solaris-thread-multi-64int" -o "$OS" = "FreeBSD" ]; then
+    elif [[ "$ARCH" =~ "i386-linux" || "$ARCH" =~ "x86_64-linux" || "$ARCH" =~ "i86pc-solaris" || "$OS" = "FreeBSD" ]]; then
         # build libjpeg-turbo
         tar_wrapper zxf $TURBO_VER.tar.gz
         cd $TURBO_VER
 
         # Disable features we don't need
-        cp -fv ../libjpeg-turbo-jmorecfg.h jmorecfg.h
+        patch -p0 < ../libjpeg-turbo-jmorecfg.h.patch
 
         CFLAGS="$FLAGS $OSX_ARCH $OSX_FLAGS" CXXFLAGS="$FLAGS $OSX_ARCH $OSX_FLAGS" LDFLAGS="$FLAGS $OSX_ARCH $OSX_FLAGS" \
             ./configure -q --prefix=$BUILD --disable-dependency-tracking
@@ -1297,8 +1302,8 @@ function build_libpng {
     fi
 
     # build libpng
-    LIBPNG_PREFIX="libpng-1.6.34"
-    tar_wrapper zxvf $LIBPNG_PREFIX.tar.gz
+    LIBPNG_PREFIX="libpng-1.6.36"
+    tar_wrapper zxf $LIBPNG_PREFIX.tar.gz
     cd $LIBPNG_PREFIX
 
     # Disable features we don't need
@@ -1341,7 +1346,7 @@ function build_giflib {
 
     # build giflib
     GIFLIB_PREFIX="giflib-5.1.4"
-    tar_wrapper zxvf $GIFLIB_PREFIX.tar.gz
+    tar_wrapper zxf $GIFLIB_PREFIX.tar.gz
     cd $GIFLIB_PREFIX
     . ../update-config.sh
     CFLAGS="$FLAGS $OSX_ARCH $OSX_FLAGS -O3" \
@@ -1360,7 +1365,7 @@ function build_giflib {
 }
 
 function build_ffmpeg {
-    FFMPEG_PREFIX="ffmpeg-4.0"
+    FFMPEG_PREFIX="ffmpeg-4.1"
     FFMPEG_VER_TO_BUILD=`echo ${FFMPEG_PREFIX##*-} | sed "s#\ *)\ *##g" | \
             sed -e 's/\.\([0-9][0-9]\)/\1/g' -e 's/\.\([0-9]\)/0\1/g' -e 's/^[0-9]\{3,4\}$/&00/'`
     echo "build ffmpeg"
@@ -1420,7 +1425,7 @@ function build_ffmpeg {
   
     # ASM doesn't work right on x86_64
     # XXX test --arch options on Linux
-    if [[ "$ARCH" = "x86_64-linux-thread-multi" || "$ARCH" =~ "amd64-freebsd" || "$ARCH" = "i86pc-solaris-thread-multi-64int" ]]; then
+    if [[ "$ARCH" =~ "x86_64-linux" || "$ARCH" =~ "amd64-freebsd" || "$ARCH" =~ "i86pc-solaris" ]]; then
         FFOPTS="$FFOPTS --disable-mmx"
     fi
     # FreeBSD amd64 needs arch option
@@ -1546,16 +1551,11 @@ function build_bdb {
 
     # build bdb
     DB_PREFIX="db-6.2.32"
-    tar_wrapper zxvf $DB_PREFIX.tar.gz
+    tar_wrapper zxf $DB_PREFIX.tar.gz
     cd $DB_PREFIX/dist
     . ../../update-config.sh
     cd ../build_unix
 
-    if [ "$OS" = "Darwin" -o "$OS" = "FreeBSD" -o "$CC_IS_CLANG" == true ]; then
-       pushd ..
-       patch -p0 < ../db51-src_dbinc_atomic.patch
-       popd
-    fi
     CFLAGS="$FLAGS $OSX_ARCH $OSX_FLAGS -O3" \
     LDFLAGS="$FLAGS $OSX_ARCH $OSX_FLAGS -O3" \
         ../dist/configure -q --prefix=$BUILD $MUTEX \
