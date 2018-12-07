@@ -1165,6 +1165,7 @@ function build_libjpeg {
         patch -p0 < ../libjpeg-turbo-jmorecfg.h.patch
 
         # Build 64-bit fork
+        autoreconf -fi
         CFLAGS="-O3 $OSX_FLAGS" \
         CXXFLAGS="-O3 $OSX_FLAGS" \
         LDFLAGS="$OSX_FLAGS" \
@@ -1211,6 +1212,7 @@ function build_libjpeg {
         # Disable features we don't need
         patch -p0 < ../libjpeg-turbo-jmorecfg.h.patch
 
+        autoreconf -fi
         CFLAGS="-O3 -m32 $OSX_FLAGS" \
         CXXFLAGS="-O3 -m32 $OSX_FLAGS" \
         LDFLAGS="-m32 $OSX_FLAGS" \
@@ -1259,6 +1261,7 @@ function build_libjpeg {
         # Disable features we don't need
         patch -p0 < ../libjpeg-turbo-jmorecfg.h.patch
 
+        autoreconf -fi
         CFLAGS="$FLAGS $OSX_ARCH $OSX_FLAGS" CXXFLAGS="$FLAGS $OSX_ARCH $OSX_FLAGS" LDFLAGS="$FLAGS $OSX_ARCH $OSX_FLAGS" \
             ./configure -q --prefix=$BUILD --disable-dependency-tracking
         $MAKE
@@ -1518,7 +1521,6 @@ function build_ffmpeg {
         cp -f libswscale.a $BUILD/lib/libswscale.a
 
         FLAGS=$SAVED_FLAGS
-        cd ..
     else
         CFLAGS="$FLAGS -O3" \
         LDFLAGS="$FLAGS -O3" \
@@ -1532,7 +1534,7 @@ function build_ffmpeg {
         $MAKE install
     fi
     # Starting with 3.4.1, we copy the release to ease last-built version detection
-    cp VERSION $BUILD/share/ffmpeg/VERSION
+    echo "FFMPEG_VER_TO_BUILD" > $BUILD/share/ffmpeg/VERSION
 
     cd ..
     rm -r $FFMPEG_PREFIX

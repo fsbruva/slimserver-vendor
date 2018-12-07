@@ -31,13 +31,13 @@ matrix:
       script:
         - perl -V
         - cd CPAN
-        - bash -o errexit buildme.sh Media::Scan
+        - bash -o errexit buildme.sh Image::Scale
 
 install: true
 
 script:
   - cd CPAN
-#  - bash -o errexit buildme.sh
+  - bash -o errexit buildme.sh Media::Scan
 
 notifications:
   email:
