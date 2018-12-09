@@ -158,7 +158,7 @@ if [ "$OS" = "FreeBSD" ]; then
     export CPP=$GPP
 fi
 
-for i in $GCC $GXX rsync make ; do
+for i in $GCC $GXX rsync make autoreconf ; do
     if ! [ -x "$(command -v $i)" ] ; then
         echo "$i not found - please install it"
         exit 1
@@ -231,11 +231,9 @@ else
     GCC_LIBCPP=false
 fi
 
-if ! [ -x "$(command -v yasm)" ]; then
-    if ! [ -x "$(command -v nasm)" ]; then
-        echo "please install either yasm or nasm."
-        exit 1
-    fi
+if ! [ -x "$(command -v nasm)" ]; then
+    echo "Please install nasm (needed for ffmpeg and libjpeg)."
+    exit 1
 fi
 
 if [ "$OS" = "Linux" ]; then
@@ -1058,8 +1056,9 @@ function build {
             # XXX library does not link correctly on Darwin with libjpeg due to missing x86_64
             # in libjpeg.dylib, Perl still links OK because it uses libjpeg.a
             tar_wrapper zxf libmediascan-0.3.tar.gz
-
             cd libmediascan-0.3
+            . ../update-config.sh
+            autoreconf -fi
 
             CFLAGS="-I$BUILD/include $FLAGS $OSX_ARCH $OSX_FLAGS -O3" \
             LDFLAGS="-L$BUILD/lib $FLAGS $OSX_ARCH $OSX_FLAGS -O3 " \
@@ -1089,8 +1088,8 @@ function build {
                 --with-gif-includes=$BUILD/include \
                 --with-bdb-includes=$BUILD/include"
 
-            # FreeBSD doesn't contain GNU gettext in the base. This only prevents exif logging.
-            if [ "$OS" = "FreeBSD" ]; then
+            # FreeBSD and OSx don't have GNU gettext in the base. This only prevents exif logging.
+            if [[ "$OS" == "FreeBSD" || "$OS" == "Darwin" ]]; then
                 MSOPTS="$MSOPTS --omit-intl"
             fi
 
@@ -1152,6 +1151,9 @@ function build_libjpeg {
     if [ -f $BUILD/include/jpeglib.h ]; then
         return
     fi
+    # There is a known issue with the way automake passes things to libtool,
+    # so the warnings about an "unknown NASM token" can be disregarded. See
+    # for more info: https://sourceforge.net/p/libjpeg-turbo/mailman/message/34381375/
 
     # build libjpeg-turbo on x86 platforms
     TURBO_VER="libjpeg-turbo-1.5.3"
@@ -1165,7 +1167,7 @@ function build_libjpeg {
         patch -p0 < ../libjpeg-turbo-jmorecfg.h.patch
 
         # Build 64-bit fork
-        autoreconf -fi
+        autoreconf -fiv
         CFLAGS="-O3 $OSX_FLAGS" \
         CXXFLAGS="-O3 $OSX_FLAGS" \
         LDFLAGS="$OSX_FLAGS" \
@@ -1185,7 +1187,7 @@ function build_libjpeg {
         CFLAGS="-O3 -m32 $OSX_FLAGS" \
         CXXFLAGS="-O3 -m32 $OSX_FLAGS" \
         LDFLAGS="-m32 $OSX_FLAGS" \
-            ./configure -q --prefix=$BUILD NASM=/usr/local/bin/nasm \
+            ./configure -q --host i686-apple-darwin --prefix=$BUILD NASM=/usr/local/bin/nasm \
             --disable-dependency-tracking
         $MAKE
         if [ $? != 0 ]; then
@@ -1216,7 +1218,7 @@ function build_libjpeg {
         CFLAGS="-O3 -m32 $OSX_FLAGS" \
         CXXFLAGS="-O3 -m32 $OSX_FLAGS" \
         LDFLAGS="-m32 $OSX_FLAGS" \
-            ./configure -q --prefix=$BUILD NASM=/usr/local/bin/nasm \
+            ./configure -q --host i686-apple-darwin --prefix=$BUILD NASM=/usr/local/bin/nasm \
             --disable-dependency-tracking
         $MAKE
         if [ $? != 0 ]; then
@@ -1334,8 +1336,6 @@ function build_giflib {
         # Determine the version of the last-built giflib
         GIF_MAJOR=`grep 'GIFLIB_MAJOR' $BUILD/include/gif_lib.h | sed 's/.*_MAJOR\ //g'`
         if [ ! -z $GIF_MAJOR ]; then
-            # FFmpeg uses a scheme similar to Semantic Versioning (http://semver.org/)
-            # The micro version (patch level) is always three digits
             GIF_MINOR=`grep 'GIFLIB_MINOR' $BUILD/include/gif_lib.h | sed 's/.*_MINOR\ //g'`
             GIF_RELEASE=`grep 'GIFLIB_RELEASE' $BUILD/include/gif_lib.h | sed 's/.*_RELEASE\ //g'`
             GIF_VERSION=`echo "$GIF_MAJOR"."$GIF_MINOR"."$GIF_RELEASE" | sed "s#\ *)\ *##g" | \
@@ -1375,8 +1375,7 @@ function build_ffmpeg {
     if [ -f $BUILD/include/libavformat/avformat.h ]; then
         # Determine the version of the last-built ffmpeg
         if [ -f $BUILD/share/ffmpeg/VERSION ]; then
-            FFMPEG_VER_FOUND=`cat $BUILD/share/ffmpeg/VERSION | sed "s#\ *)\ *##g" | \
-            sed -e 's/\.\([0-9][0-9]\)/\1/g' -e 's/\.\([0-9]\)/0\1/g' -e 's/^[0-9]\{3,4\}$/&00/'`
+            FFMPEG_VER_FOUND=`cat $BUILD/share/ffmpeg/VERSION`
             # Only skip the build if it's using the most recent version
             if [ $FFMPEG_VER_FOUND -ge $FFMPEG_VER_TO_BUILD ]; then
                 return
@@ -1400,7 +1399,7 @@ function build_ffmpeg {
         --disable-armv5te --disable-armv6 --disable-armv6t2 --disable-mmi --disable-neon \
         --disable-altivec \
         --enable-zlib --disable-bzlib \
-        --disable-everything --enable-swscale \
+        --disable-everything --disable-iconv --enable-swscale \
         --enable-decoder=h264 --enable-decoder=mpeg1video --enable-decoder=mpeg2video \
         --enable-decoder=mpeg4 --enable-decoder=msmpeg4v1 --enable-decoder=msmpeg4v2 \
         --enable-decoder=msmpeg4v3 --enable-decoder=vp6f --enable-decoder=vp8 \
@@ -1533,8 +1532,8 @@ function build_ffmpeg {
         fi
         $MAKE install
     fi
-    # Starting with 3.4.1, we copy the release to ease last-built version detection
-    echo "FFMPEG_VER_TO_BUILD" > $BUILD/share/ffmpeg/VERSION
+    # Starting with 4.1, we copy the release to ease last-built version detection
+    echo $FFMPEG_VER_TO_BUILD > $BUILD/share/ffmpeg/VERSION
 
     cd ..
     rm -r $FFMPEG_PREFIX
@@ -1559,7 +1558,7 @@ function build_bdb {
     cd ../build_unix
 
     CFLAGS="$FLAGS $OSX_ARCH $OSX_FLAGS -O3" \
-    LDFLAGS="$FLAGS $OSX_ARCH $OSX_FLAGS -O3" \
+    LDFLAGS="$FLAGS $OSX_ARCH $OSX_FLAGS -O3 " \
         ../dist/configure -q --prefix=$BUILD $MUTEX \
         --with-cryptography=no -disable-hash --disable-queue --disable-replication --disable-statistics --disable-verify \
         --disable-dependency-tracking --disable-shared
