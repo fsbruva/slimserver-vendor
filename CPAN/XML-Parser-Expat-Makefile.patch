@@ -1,5 +1,5 @@
---- Expat/Makefile.PL.orig	2009-10-03 04:04:21.000000000 -0400
-+++ Expat/Makefile.PL	2009-10-03 04:04:35.000000000 -0400
+--- Expat/Makefile.PL	2018-12-07 20:53:26.529359076 +0000
++++ Expat/Makefile.PL	2018-12-07 20:55:20.325198003 +0000
 @@ -2,7 +2,7 @@
  use Config;
  use English;
@@ -9,3 +9,12 @@
  my @extras = ();
  
  push(@extras, INC => "-I$expat_incpath") if $expat_incpath;
+@@ -22,6 +22,8 @@
+     NAME	=> 'XML::Parser::Expat',
+     C         => ['Expat.c'],
+     LIBS	=> $libs,
++    LD        => $ld,
++    LDDLFLAGS => $lddlflags,
+     XSPROTOARG => '-noprototypes',
+     VERSION_FROM => 'Expat.pm',
+     @extras
