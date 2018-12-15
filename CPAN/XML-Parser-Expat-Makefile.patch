@@ -9,12 +9,3 @@
  my @extras = ();
  
  push(@extras, INC => "-I$expat_incpath") if $expat_incpath;
-@@ -22,6 +22,8 @@
-     NAME	=> 'XML::Parser::Expat',
-     C         => ['Expat.c'],
-     LIBS	=> $libs,
-+    LD        => $ld,
-+    LDDLFLAGS => $lddlflags,
-     XSPROTOARG => '-noprototypes',
-     VERSION_FROM => 'Expat.pm',
-     @extras

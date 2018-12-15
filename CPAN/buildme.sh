@@ -185,12 +185,7 @@ case $OS in
             exit
         fi
         export MAKE=/usr/bin/gmake
-        export CFLAGS_COMMON="$CFLAGS_COMMON -m64"
-        export CXXFLAGS_COMMON="$CXXFLAGS_COMMON -m64"
-        export LDFLAGS_COMMON="$LDFLAGS_COMMON -m64 -L/usr/gnu/lib -fstack-protector-strong"
-        export PERL_LD=gcc
-        export PERL_LDDLFLAGS="$LDFLAGS_COMMON -shared -m64 -L/usr/gnu/lib -fstack-protector-strong"
-        ;;
+    ;;
     Linux)
         #for i in libgif libz libgd ; do
 	    for i in libz ; do
@@ -553,7 +548,7 @@ function build_module {
     if [ $PERL_BIN ]; then
         export PERL5LIB=$PERL_BASE/lib/perl5
 
-        $PERL_BIN Makefile.PL INSTALL_BASE=$PERL_BASE CC=$PERL_CC CCFLAGS="$PERL_CCFLAGS" CCDLFLAGS="$PERL_CCDLFLAGS" CCCDLFLAGS="$PERL_CCCDLFLAGS" LD=$PERL_LD LDFLAGS="$PERL_LDFLAGS" LDDLFLAGS="$PERL_LDDLFLAGS" $makefile_args
+        $PERL_BIN Makefile.PL INSTALL_BASE=$PERL_BASE $makefile_args
         if [ $local_run_tests -eq 1 ]; then
             $MAKE test
         else
@@ -989,7 +984,6 @@ function build {
             cd XML-Parser-2.41
             cp -Rv ../hints .
             cp -Rv ../hints ./Expat # needed for second Makefile.PL
-            patch -p0 < ../XML-Parser-Makefile.patch
             patch -p0 < ../XML-Parser-Expat-Makefile.patch
 
             cd ..
@@ -1093,7 +1087,7 @@ function build {
             if [ $PERL_BIN ]; then
                 export PERL5LIB=$PERL_BASE/lib/perl5
 	
-                $PERL_BIN Makefile.PL $MSOPTS INSTALL_BASE=$PERL_BASE CC=$PERL_CC CCFLAGS="$PERL_CCFLAGS" CCDLFLAGS="$PERL_CCDLFLAGS" LD=$PERL_LD LDFLAGS="$PERL_LDFLAGS" LDDLFLAGS="$PERL_LDDLFLAGS -Wl,-Bsymbolic"
+                $PERL_BIN Makefile.PL $MSOPTS INSTALL_BASE=$PERL_BASE 
                 $MAKE
                 if [ $? != 0 ]; then
                     echo "make failed, aborting"
