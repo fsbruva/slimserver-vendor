@@ -1,0 +1,39 @@
+# pngusr.dfa
+#
+# Build time configuration of libpng for Squeezebox Server
+#
+# Tested with gcc 4.2.1 and libpng-1.6.34
+#
+# Works with Image::Scale v0.11 and 0.14
+option MNG_FEATURES off
+option FLOATING_ARITHMETIC off
+option FLOATING_POINT off
+option FIXED_POINT on
+
+# These are all the options that were included as part of the libpng-1.4.3 conf
+# authored by agrundman. They are commented out because they prevent compilation
+# or prevent compilation of Image::Scale. Enable them at your own peril.
+#option CONSOLE_IO off
+#option STDIO off
+
+#chunk cHRM off
+#chunk gAMA off
+#chunk hIST off
+#chunk iCCP off
+#chunk oFFs off
+#chunk pCAL off
+#chunk pHYs off
+#chunk sBIT off
+#chunk sCAL off
+#chunk sPLT off
+#chunk sRGB off
+#chunk tIME off
+#chunk tRNS off
+#@#define PNG_NO_READ_TEXT
+#@#define PNG_NO_READ_UNKNOWN_CHUNKS
+#@#define PNG_NO_READ_USER_CHUNKS
+#@#define PNG_NO_HANDLE_AS_UNKNOWN
+
+#@#define PNG_NO_WRITE_TEXT
+#@#define PNG_NO_WRITE_UNKNOWN
+#@#define PNG_NO_INFO_IMAGE

@@ -19,13 +19,10 @@
 #   Under 10.10, builds for x86_64 Perl 5.18
 # FreeBSD 7.2 (Perl 5.8.9)
 # FreeBSD 8.X,9.X (Perl 5.12.4)
-# Solaris
-#   builds are best done with custom compiled perl and gcc
-#   using the following PATH=/opt/gcc-5.1.0/bin:/usr/gnu/bin:$PATH
-#   plus a path to a version of yasm and nasm
-#
-#   Tested versions (to be extended)
-#     OmniOSCE 151022 LTS (Perl 5.24.1)
+# Solaris/OmniOS/Openindiana/Illumos
+#   builds are best done with custom compiled perl having
+#   gnu-binutils in path, e.g.
+#   PATH=/opt/gcc-7/bin:/usr/gnu/bin:$PATH
 #
 # Perl 5.12.4/5.14.1 note:
 #   You should build 5.12.4 using perlbrew and the following command. GCC's stack protector must be disabled
@@ -44,7 +41,6 @@
 RUN_TESTS=1
 USE_HINTS=1
 CLEAN=1
-FLAGS="-fPIC"
 
 function usage {
     cat <<EOF
@@ -111,52 +107,154 @@ if [[ ! -z "$CXX" ]]; then
 else
    GXX=g++
 fi
+export CFLAGS_COMMON="-fPIC"
+export CXXFLAGS_COMMON="-fPIC"
+export LDFLAGS_COMMON="-fPIC"
 
 # This script uses the following precedence for FreeBSD:
 # 1. Environment values for CC/CXX/CPP (checks if $CC is already defined)
 # 2. Values defined in /etc/make.conf, or
 # 3. Stock build chain
-if [ "$OS" = "FreeBSD" ]; then
-    BSD_MAJOR_VER=`uname -r | sed 's/\..*//g'`
-    BSD_MINOR_VER=`uname -r | sed 's/.*\.//g'`
-    if [ -f "/etc/make.conf" ]; then
-        MAKE_CC=`grep ^CC= /etc/make.conf | grep -v CCACHE | grep -v \# | sed 's#CC=##g'`
-        MAKE_CXX=`grep ^CXX= /etc/make.conf | grep -v CCACHE | grep -v \# | sed 's#CXX=##g'`
-        MAKE_CPP=`grep ^CPP= /etc/make.conf | grep -v CCACHE | grep -v \# | sed 's#CPP=##g'`
-    fi
-    if [[ ! -z "$CC" ]]; then
-        GCC="$CC"
-    elif [[ ! -z "$MAKE_CC" ]]; then
-        GCC="$MAKE_CC"
-    elif [ $BSD_MAJOR_VER -ge 10 ]; then
-        # FreeBSD started using clang as the default compiler starting with 10.
-        GCC=cc
-    else
-        GCC=gcc
-    fi
-    if [[ ! -z "$CXX" ]]; then
-        GXX="$CXX"
-    elif [[ ! -z "$MAKE_CXX" ]]; then
-        GXX="$MAKE_CXX"
-    elif [ $BSD_MAJOR_VER -ge 10 ]; then
-        # FreeBSD started using clang++ as the default compiler starting with 10.
-        GXX=c++
-    else
-        GXX=g++
-    fi
-    if [[ ! -z "$CPP" ]]; then
-        GPP="$CPP"
-    elif [[ ! -z "$MAKE_CPP" ]]; then
-        GPP="$MAKE_CPP"
-    else
-        GPP=cpp
-    fi
-    # Ensure the environment makes use of the desired/specified compilers and
-    # pre-processor
-    export CC=$GCC
-    export CXX=$GXX
-    export CPP=$GPP
-fi
+case $OS in
+    FreeBSD)
+        BSD_MAJOR_VER=`uname -r | sed 's/\..*//g'`
+        BSD_MINOR_VER=`uname -r | sed 's/.*\.//g'`
+        if [ -f "/etc/make.conf" ]; then
+            MAKE_CC=`grep ^CC= /etc/make.conf | grep -v CCACHE | grep -v \# | sed 's#CC=##g'`
+            MAKE_CXX=`grep ^CXX= /etc/make.conf | grep -v CCACHE | grep -v \# | sed 's#CXX=##g'`
+            MAKE_CPP=`grep ^CPP= /etc/make.conf | grep -v CCACHE | grep -v \# | sed 's#CPP=##g'`
+        fi
+        if [[ ! -z "$CC" ]]; then
+            GCC="$CC"
+        elif [[ ! -z "$MAKE_CC" ]]; then
+            GCC="$MAKE_CC"
+        elif [ $BSD_MAJOR_VER -ge 10 ]; then
+            # FreeBSD started using clang as the default compiler starting with 10.
+            GCC=cc
+        else
+            GCC=gcc
+        fi
+        if [[ ! -z "$CXX" ]]; then
+            GXX="$CXX"
+        elif [[ ! -z "$MAKE_CXX" ]]; then
+            GXX="$MAKE_CXX"
+        elif [ $BSD_MAJOR_VER -ge 10 ]; then
+            # FreeBSD started using clang++ as the default compiler starting with 10.
+            GXX=c++
+        else
+            GXX=g++
+        fi
+        if [[ ! -z "$CPP" ]]; then
+            GPP="$CPP"
+        elif [[ ! -z "$MAKE_CPP" ]]; then
+            GPP="$MAKE_CPP"
+        else
+            GPP=cpp
+        fi
+        # Ensure the environment makes use of the desired/specified compilers and
+        # pre-processor
+        export CC=$GCC
+        export CXX=$GXX
+        export CPP=$GPP
+    
+        if [ ! -x /usr/local/bin/gmake ]; then
+            echo "ERROR: Please install GNU make (gmake)"
+            exit
+        fi
+        export MAKE=/usr/local/bin/gmake
+    
+        #for i in libgif libz libgd ; do
+	    for i in libz ; do
+	        ldconfig -r | grep "${i}.so" > /dev/null #On FreeBSD flag -r should be used, there is no -p
+	        if [ $? -ne 0 ] ; then
+	            echo "$i not found - please install it"
+	            exit 1
+	        fi
+	    done
+	    for hdr in "zlib.h"; do
+	        hdr_found=$(find /usr/include/ -name "$hdr");
+	        if [ ! "$hdr_found" ]; then
+	            echo "$hdr not found - please install appropriate development package"
+	            exit 1
+	        fi
+	    done
+    ;;
+    SunOS)
+        if [ ! -x /usr/bin/gmake ]; then
+            echo "ERROR: Please install GNU make (gmake)"
+            exit
+        fi
+        export MAKE=/usr/bin/gmake
+    ;;
+    Linux)
+        #for i in libgif libz libgd ; do
+	    for i in libz ; do
+	        ldconfig -p | grep "${i}.so" > /dev/null
+	        if [ $? -ne 0 ] ; then
+	            echo "$i not found - please install it"
+	            exit 1
+	        fi
+	    done
+	    for hdr in "zlib.h"; do
+	        hdr_found=$(find /usr/include -name "$hdr");
+	        if [ ! "$hdr_found" ]; then
+	            echo "$hdr not found - please install appropriate development package"
+	            exit 1
+	        fi
+	    done
+    ;;
+    Darwin)
+        # figure out OSX version and customize SDK options
+        OSX_VER=`/usr/sbin/system_profiler SPSoftwareDataType`
+        REGEX=' OS X.* (10\.[5-9])'
+        REGEX2=' OS X.* (10\.1[0-9])'
+        REGEX3=' macOS (10\.1[0-9])'
+
+        if [[ $OSX_VER =~ $REGEX3 ]]; then
+            OSX_VER=${BASH_REMATCH[1]}
+        elif [[ $OSX_VER =~ $REGEX ]]; then
+            OSX_VER=${BASH_REMATCH[1]}
+        elif [[ $OSX_VER =~ $REGEX2 ]]; then
+            OSX_VER=${BASH_REMATCH[1]}
+        else
+            echo "Unable to determine OSX version"
+            exit 0
+        fi
+
+        if [ "$OSX_VER" = "10.5" ]; then
+            # Leopard, build for i386/ppc with support back to 10.4
+            OSX_ARCH="-arch i386 -arch ppc"
+            OSX_FLAGS="-isysroot /Developer/SDKs/MacOSX10.4u.sdk -mmacosx-version-min=10.4"
+        elif [ "$OSX_VER" = "10.6" ]; then
+            # Snow Leopard, build for x86_64/i386 with support back to 10.5
+            OSX_ARCH="-arch x86_64 -arch i386"
+            OSX_FLAGS="-isysroot /Developer/SDKs/MacOSX10.5.sdk -mmacosx-version-min=10.5"
+        elif [ "$OSX_VER" = "10.7" ]; then
+            # Lion, build for x86_64 with support back to 10.6
+            OSX_ARCH="-arch x86_64"
+            OSX_FLAGS="-isysroot /Developer/SDKs/MacOSX10.6.sdk -mmacosx-version-min=10.6"
+        elif [ "$OSX_VER" = "10.9" ]; then
+            # Mavericks, build for x86_64 with support back to 10.9
+            OSX_ARCH="-arch x86_64"
+            OSX_FLAGS="-mmacosx-version-min=10.9"
+        elif [ "$OSX_VER" = "10.10" ]; then
+            # Yosemite, build for x86_64 with support back to 10.10
+            OSX_ARCH="-arch x86_64"
+            OSX_FLAGS="-mmacosx-version-min=10.10"
+        else
+            OSX_ARCH="-arch x86_64"
+            OSX_FLAGS="-mmacosx-version-min=$OSX_VER"
+        fi    
+    ;;
+    *)
+        # Support a newer make if available, needed on ReadyNAS
+        if [ -x /usr/local/bin/make ]; then
+            export MAKE=/usr/local/bin/make
+        else
+            export MAKE=/usr/bin/make
+        fi
+    ;;
+esac
 
 for i in $GCC $GXX rsync make ; do
     which $i > /dev/null
@@ -241,92 +339,9 @@ if [ $? -ne 0 ] ; then
     fi
 fi
 
-if [ "$OS" = "Linux" ]; then
-	#for i in libgif libz libgd ; do
-	for i in libz ; do
-	    ldconfig -p | grep "${i}.so" > /dev/null
-	    if [ $? -ne 0 ] ; then
-	        echo "$i not found - please install it"
-	        exit 1
-	    fi
-	done
-	for hdr in "zlib.h"; do
-	    hdr_found=$(find /usr/include -name "$hdr");
-	    if [ ! "$hdr_found" ]; then
-	        echo "$hdr not found - please install appropriate development package"
-	        exit 1
-	    fi
-	done
-fi
-
-if [ "$OS" = "FreeBSD" ]; then
-	#for i in libgif libz libgd ; do
-	for i in libz ; do
-	    ldconfig -r | grep "${i}.so" > /dev/null #On FreeBSD flag -r should be used, there is no -p
-	    if [ $? -ne 0 ] ; then
-	        echo "$i not found - please install it"
-	        exit 1
-	    fi
-	done
-	for hdr in "zlib.h"; do
-	    hdr_found=$(find /usr/include/ -name "$hdr");
-	    if [ ! "$hdr_found" ]; then
-	        echo "$hdr not found - please install appropriate development package"
-	        exit 1
-	    fi
-	done
-fi
-
 find /usr/lib/ -maxdepth 1 | grep libungif
 if [ $? -eq 0 ] ; then
     echo "ON SOME PLATFORMS (Ubuntu/Debian at least) THE ABOVE LIBRARIES MAY NEED TO BE TEMPORARILY REMOVED TO ALLOW THE BUILD TO WORK"
-fi
-
-# figure out OSX version and customize SDK options
-OSX_VER=
-OSX_FLAGS=
-OSX_ARCH=
-if [ "$OS" = "Darwin" ]; then
-    OSX_VER=`/usr/sbin/system_profiler SPSoftwareDataType`
-    REGEX=' OS X.* (10\.[5-9])'
-    REGEX2=' OS X.* (10\.1[0-9])'
-    REGEX3=' macOS (10\.1[0-9])'
-
-    if [[ $OSX_VER =~ $REGEX3 ]]; then
-        OSX_VER=${BASH_REMATCH[1]}
-    elif [[ $OSX_VER =~ $REGEX ]]; then
-        OSX_VER=${BASH_REMATCH[1]}
-    elif [[ $OSX_VER =~ $REGEX2 ]]; then
-        OSX_VER=${BASH_REMATCH[1]}
-    else
-        echo "Unable to determine OSX version"
-        exit 0
-    fi
-
-    if [ "$OSX_VER" = "10.5" ]; then
-        # Leopard, build for i386/ppc with support back to 10.4
-        OSX_ARCH="-arch i386 -arch ppc"
-        OSX_FLAGS="-isysroot /Developer/SDKs/MacOSX10.4u.sdk -mmacosx-version-min=10.4"
-    elif [ "$OSX_VER" = "10.6" ]; then
-        # Snow Leopard, build for x86_64/i386 with support back to 10.5
-        OSX_ARCH="-arch x86_64 -arch i386"
-        OSX_FLAGS="-isysroot /Developer/SDKs/MacOSX10.5.sdk -mmacosx-version-min=10.5"
-    elif [ "$OSX_VER" = "10.7" ]; then
-        # Lion, build for x86_64 with support back to 10.6
-        OSX_ARCH="-arch x86_64"
-        OSX_FLAGS="-isysroot /Developer/SDKs/MacOSX10.6.sdk -mmacosx-version-min=10.6"
-    elif [ "$OSX_VER" = "10.9" ]; then
-        # Mavericks, build for x86_64 with support back to 10.9
-        OSX_ARCH="-arch x86_64"
-        OSX_FLAGS="-mmacosx-version-min=10.9"
-    elif [ "$OSX_VER" = "10.10" ]; then
-        # Yosemite, build for x86_64 with support back to 10.10
-        OSX_ARCH="-arch x86_64"
-        OSX_FLAGS="-mmacosx-version-min=10.10"
-    else
-        OSX_ARCH="-arch x86_64"
-        OSX_FLAGS="-mmacosx-version-min=$OSX_VER"
-    fi
 fi
 
 # Build dir
@@ -484,28 +499,6 @@ echo "Building with Perl 5.$PERL_MINOR_VER at $PERL_BIN"
 PERL_BASE=$BUILD/5.$PERL_MINOR_VER
 PERL_ARCH=$BUILD/arch/5.$PERL_MINOR_VER
 
-# FreeBSD's make sucks
-if [ "$OS" = "FreeBSD" ]; then
-    if [ ! -x /usr/local/bin/gmake ]; then
-        echo "ERROR: Please install GNU make (gmake)"
-        exit
-    fi
-    export MAKE=/usr/local/bin/gmake
-elif [ "$OS" = "SunOS" ]; then
-    if [ ! -x /usr/bin/gmake ]; then
-        echo "ERROR: Please install GNU make (gmake)"
-        exit
-    fi
-    export MAKE=/usr/bin/gmake
-else
-    # Support a newer make if available, needed on ReadyNAS
-    if [ -x /usr/local/bin/make ]; then
-        export MAKE=/usr/local/bin/make
-    else
-        export MAKE=/usr/bin/make
-    fi
-fi
-
 #  Clean up
 if [ $CLEAN -eq 1 ]; then
     rm -rf $BUILD/arch
@@ -520,7 +513,6 @@ function tar_wrapper {
     tar $1 "$2"
     echo "tar done"
 }
-
 
 # $1 = module to build
 # $2 = Makefile.PL arg(s)
@@ -622,7 +614,7 @@ function build {
                 cp -Rv ../hints .
                 export PERL5LIB=$PERL_BASE/lib/perl5
 
-                $PERL_BIN Makefile.PL INSTALL_BASE=$PERL_BASE $2
+                $PERL_BIN Makefile.PL INSTALL_BASE=$PERL_BASE $PERL_CONFIG_CUSTOM $2
                 if [ $RUN_TESTS -eq 1 ]; then
                     $MAKE test
                 else
@@ -687,21 +679,21 @@ function build {
                 patch -p0 < ../../icu58_patches/digitlst.cpp.patch
                 . ../../update-config.sh
                 if [ "$OS" = 'Darwin' ]; then
-                    ICUFLAGS="$FLAGS $OSX_ARCH $OSX_FLAGS -DU_USING_ICU_NAMESPACE=0 -DU_CHARSET_IS_UTF8=1" # faster code for native UTF-8 systems
+                    ICUFLAGS="$OSX_ARCH $OSX_FLAGS -DU_USING_ICU_NAMESPACE=0 -DU_CHARSET_IS_UTF8=1" # faster code for native UTF-8 systems
                     ICUOS="MacOSX"
                 elif [ "$OS" = 'Linux' ]; then
-                    ICUFLAGS="$FLAGS -DU_USING_ICU_NAMESPACE=0"
+                    ICUFLAGS="-DU_USING_ICU_NAMESPACE=0"
                     ICUOS="Linux"
                 elif [ "$OS" = 'SunOS' ]; then
-                    ICUFLAGS="$FLAGS -D_XPG6 -DU_USING_ICU_NAMESPACE=0"
+                    ICUFLAGS="-D_XPG6 -DU_USING_ICU_NAMESPACE=0 -DU_CHARSET_IS_UTF8=1"
                     ICUOS="Solaris/GCC"
                 elif [ "$OS" = 'FreeBSD' ]; then
-                    ICUFLAGS="$FLAGS -DU_USING_ICU_NAMESPACE=0"
+                    ICUFLAGS="-DU_USING_ICU_NAMESPACE=0"
                     ICUOS="FreeBSD"
                     for i in ../../icu58_patches/freebsd/patch-*;
                         do patch -p0 < $i; done
                 fi
-                CFLAGS="$ICUFLAGS" CXXFLAGS="$ICUFLAGS" LDFLAGS="$FLAGS $OSX_ARCH $OSX_FLAGS" \
+                CFLAGS="$CFLAGS_COMMON $ICUFLAGS" CXXFLAGS="$CXXFLAGS_COMMON $ICUFLAGS" LDFLAGS="$LDFLAGS_COMMON $OSX_ARCH $OSX_FLAGS" \
                     ./runConfigureICU $ICUOS --prefix=$BUILD --enable-static --with-data-packaging=archive
                 $MAKE
                 if [ $? != 0 ]; then
@@ -746,7 +738,7 @@ function build {
                 # Running 5.8
                 export PERL5LIB=$PERL_BASE/lib/perl5
 
-                $PERL_BIN Makefile.PL INSTALL_BASE=$PERL_BASE $2
+                $PERL_BIN Makefile.PL INSTALL_BASE=$PERL_BASE $PERL_CONFIG_CUSTOM $2
 
                 if [ "$OS" = 'Darwin' ]; then
                     # OSX does not seem to properly find -lstdc++, so we need to hack the Makefile to add it
@@ -848,19 +840,20 @@ function build {
             build_module Test-NoWarnings-1.02 "" 0
             build_module Net-IDN-Encode-2.400
 
-            tar_wrapper zxf Net-SSLeay-1.82.tar.gz
-            cd Net-SSLeay-1.82
+            tar_wrapper zxf Net-SSLeay-1.85.tar.gz
+            cd Net-SSLeay-1.85
             patch -p0 < ../NetSSLeay-SunOS-NoPrompt.patch
+            patch -p0 < ../NetSSLeay-OpenSSL.patch
             cd ..
 
-            build_module Net-SSLeay-1.82
+            build_module Net-SSLeay-1.85
 
-            tar_wrapper zxf IO-Socket-SSL-2.052.tar.gz
-            cd IO-Socket-SSL-2.052
+            tar_wrapper zxf IO-Socket-SSL-2.060.tar.gz
+            cd IO-Socket-SSL-2.060
             patch -p0 < ../IOSocketSSL-NoPrompt-SunOS.patch
             cd ..
 
-            build_module IO-Socket-SSL-2.052
+            build_module IO-Socket-SSL-2.060
 	    ;;
 
         JSON::XS)
@@ -936,19 +929,18 @@ function build {
             tar_wrapper jxf mysql-5.1.37.tar.bz2
             cd mysql-5.1.37
             . ../update-config.sh
-            CC=gcc CXX=gcc \
-            CFLAGS="-O3 -fno-omit-frame-pointer $FLAGS $OSX_ARCH $OSX_FLAGS" \
-            CXXFLAGS="-O3 -fno-omit-frame-pointer -felide-constructors -fno-exceptions -fno-rtti $FLAGS $OSX_ARCH $OSX_FLAGS" \
+            CFLAGS="-O3 -fno-omit-frame-pointer $CFLAGS_COMMON $OSX_ARCH $OSX_FLAGS" \
+            CXXFLAGS="-O3 -fno-omit-frame-pointer -felide-constructors -fno-exceptions -fno-rtti $CXXFLAGS_COMMON $OSX_ARCH $OSX_FLAGS" \
                 ./configure --prefix=$BUILD \
                 --disable-dependency-tracking \
                 --enable-thread-safe-client \
                 --without-server --disable-shared --without-docs --without-man
-            make
+            $MAKE
             if [ $? != 0 ]; then
                 echo "make failed"
                 exit $?
             fi
-            make install
+            $MAKE install
             cd ..
             rm -rf mysql-5.1.37
 
@@ -970,8 +962,8 @@ function build {
             cd expat-2.0.1/conftools
             . ../../update-config.sh
             cd ..
-            CFLAGS="$FLAGS $OSX_ARCH $OSX_FLAGS" \
-            LDFLAGS="$FLAGS $OSX_ARCH $OSX_FLAGS" \
+            CFLAGS="$CFLAGS_COMMON $OSX_ARCH $OSX_FLAGS" \
+            LDFLAGS="$LDFLAGS_COMMON $OSX_ARCH $OSX_FLAGS" \
                 ./configure --prefix=$BUILD \
                 --disable-dependency-tracking
             $MAKE
@@ -1016,8 +1008,8 @@ function build {
             # libfreetype.a size (i386/x86_64 universal binary):
             #   1634288 (default)
             #    461984 (with custom ftoption.h/modules.cfg)
-            CFLAGS="$FLAGS $OSX_ARCH $OSX_FLAGS" \
-            LDFLAGS="$FLAGS $OSX_ARCH $OSX_FLAGS" \
+            CFLAGS="$CFLAGS_COMMON $OSX_ARCH $OSX_FLAGS" \
+            LDFLAGS="$LDFLAGS_COMMON $OSX_ARCH $OSX_FLAGS" \
                 ./configure --prefix=$BUILD
             $MAKE # needed for FreeBSD to use gmake
             if [ $? != 0 ]; then
@@ -1060,25 +1052,14 @@ function build {
             # build libmediascan
             # XXX library does not link correctly on Darwin with libjpeg due to missing x86_64
             # in libjpeg.dylib, Perl still links OK because it uses libjpeg.a
-            tar_wrapper zxf libmediascan-0.1.tar.gz
+            tar_wrapper zxvf libmediascan-0.3.tar.gz
 
-            if [ "$OSX_VER" = "10.9" -o "$OSX_VER" = "10.10" ]; then
-                patch -p0 libmediascan-0.1/bindings/perl/hints/darwin.pl < libmediascan-hints-darwin.pl.patch
-            fi
+            cd libmediascan-0.3
 
-            cd libmediascan-0.1
-
-            if [ "$OS" = "FreeBSD" ]; then
-            	patch -p1 < ../libmediascan-freebsd.patch
-            elif [ "$OS" = "SunOS" ]; then
-                patch -p0 < ../libmediascan-mediascan_unix.c-SunOS.patch
-            fi
-            . ../update-config.sh
-
-            CFLAGS="-I$BUILD/include $FLAGS $OSX_ARCH $OSX_FLAGS -O3" \
-            LDFLAGS="-L$BUILD/lib $FLAGS $OSX_ARCH $OSX_FLAGS -O3" \
-            OBJCFLAGS="-L$BUILD/lib $FLAGS $OSX_ARCH $OSX_FLAGS -O3" \
-                ./configure --prefix=$BUILD --disable-shared --disable-dependency-tracking
+            CFLAGS="-I$BUILD/include $CFLAGS_COMMON $OSX_ARCH $OSX_FLAGS -O3" \
+            LDFLAGS="-L$BUILD/lib $LDFLAGS_COMMON $OSX_ARCH $OSX_FLAGS -O3" \
+            OBJCFLAGS="-L$BUILD/lib $CFLAGS_COMMON $OSX_ARCH $OSX_FLAGS -O3" \
+                ./configure --prefix=$BUILD --with-bdb=$BUILD --disable-shared --disable-dependency-tracking
             $MAKE
             if [ $? != 0 ]; then
                 echo "make failed"
@@ -1088,7 +1069,10 @@ function build {
             cd ..
 
             # build Media::Scan
-            cd libmediascan-0.1/bindings/perl
+            build_module Sub-Uplevel-0.22 "" 0
+            build_module Tree-DAG_Node-1.06 "" 0
+            build_module Test-Warn-0.23 "" 0
+            cd libmediascan-0.3/bindings/perl
             # LMS's hints file is OK and also has custom frameworks added
 
             MSOPTS="--with-static \
@@ -1101,7 +1085,9 @@ function build {
                 --with-bdb-includes=$BUILD/include"
 
             if [ $PERL_BIN ]; then
-                $PERL_BIN Makefile.PL $MSOPTS INSTALL_BASE=$PERL_BASE
+                export PERL5LIB=$PERL_BASE/lib/perl5
+	
+                $PERL_BIN Makefile.PL $MSOPTS INSTALL_BASE=$PERL_BASE 
                 $MAKE
                 if [ $? != 0 ]; then
                     echo "make failed, aborting"
@@ -1120,7 +1106,7 @@ function build {
             fi
 
             cd ../../..
-            rm -rf libmediascan-0.1
+            rm -rf libmediascan-0.3
             ;;
     esac
 }
@@ -1135,8 +1121,8 @@ function build_libexif {
     cd libexif-0.6.20
     . ../update-config.sh
 
-    CFLAGS="$FLAGS $OSX_ARCH $OSX_FLAGS -O3" \
-    LDFLAGS="$FLAGS $OSX_ARCH $OSX_FLAGS -O3" \
+    CFLAGS="$CFLAGS_COMMON $OSX_ARCH $OSX_FLAGS -O3" \
+    LDFLAGS="$LDFLAGS_COMMON $OSX_ARCH $OSX_FLAGS -O3" \
         ./configure --prefix=$BUILD \
         --disable-dependency-tracking
     $MAKE
@@ -1156,11 +1142,12 @@ function build_libjpeg {
     fi
 
     # build libjpeg-turbo on x86 platforms
+    TURBO_VER="libjpeg-turbo-1.5.2"
     # skip on 10.9 until we've been able to build nasm from macports
     if [ "$OS" = "Darwin" -a "$OSX_VER" != "10.5" ]; then
         # Build i386/x86_64 versions of turbo
-        tar_wrapper zxf libjpeg-turbo-1.1.1.tar.gz
-        cd libjpeg-turbo-1.1.1
+        tar_wrapper zxf $TURBO_VER.tar.gz
+        cd $TURBO_VER
 
         # Disable features we don't need
         cp -fv ../libjpeg-turbo-jmorecfg.h jmorecfg.h
@@ -1206,8 +1193,8 @@ function build_libjpeg {
         # combine i386 turbo with ppc libjpeg
 
         # build i386 turbo
-        tar_wrapper zxf libjpeg-turbo-1.1.1.tar.gz
-        cd libjpeg-turbo-1.1.1
+        tar_wrapper zxf $TURBO_VER.tar.gz
+        cd $TURBO_VER
 
         # Disable features we don't need
         cp -fv ../libjpeg-turbo-jmorecfg.h jmorecfg.h
@@ -1254,14 +1241,14 @@ function build_libjpeg {
 
     elif [ "$ARCH" = "i386-linux-thread-multi" -o "$ARCH" = "x86_64-linux-thread-multi" -o "$ARCH" = "i86pc-solaris-thread-multi-64int" -o "$OS" = "FreeBSD" ]; then
         # build libjpeg-turbo
-        tar_wrapper zxf libjpeg-turbo-1.1.1.tar.gz
-        cd libjpeg-turbo-1.1.1
+        tar_wrapper zxf $TURBO_VER.tar.gz
+        cd $TURBO_VER
 
         # Disable features we don't need
         cp -fv ../libjpeg-turbo-jmorecfg.h jmorecfg.h
 
-        CFLAGS="$FLAGS $OSX_ARCH $OSX_FLAGS" CXXFLAGS="$FLAGS $OSX_ARCH $OSX_FLAGS" LDFLAGS="$FLAGS $OSX_ARCH $OSX_FLAGS" \
-            ./configure --prefix=$BUILD --disable-dependency-tracking
+        CFLAGS="$CFLAGS_COMMON $OSX_ARCH $OSX_FLAGS" CXXFLAGS="$CXXFLAGS_COMMON $OSX_ARCH $OSX_FLAGS" LDFLAGS="$LDFLAGS_COMMON $OSX_ARCH $OSX_FLAGS" \
+            ./configure --prefix=$BUILD --disable-dependency-tracking --without-simd
         $MAKE
         if [ $? != 0 ]; then
             echo "make failed"
@@ -1279,8 +1266,8 @@ function build_libjpeg {
         # Disable features we don't need
         cp -fv ../libjpeg-jmorecfg.h jmorecfg.h
 
-        CFLAGS="$FLAGS $OSX_ARCH $OSX_FLAGS -O3" \
-        LDFLAGS="$FLAGS $OSX_ARCH $OSX_FLAGS -O3" \
+        CFLAGS="$CFLAGS_COMMON $OSX_ARCH $OSX_FLAGS -O3" \
+        LDFLAGS="$LDFLAGS_COMMON $OSX_ARCH $OSX_FLAGS -O3" \
             ./configure --prefix=$BUILD \
             --disable-dependency-tracking
         $MAKE
@@ -1294,7 +1281,7 @@ function build_libjpeg {
 
     rm -rf jpeg-8b
     rm -rf jpeg-6b
-    rm -rf libjpeg-turbo-1.1.1
+    rm -rf $TURBO_VER
 }
 
 function build_libpng {
@@ -1303,17 +1290,19 @@ function build_libpng {
     fi
 
     # build libpng
-    tar_wrapper zxf libpng-1.4.3.tar.gz
-    cd libpng-1.4.3
+    LIBPNG_PREFIX="libpng-1.6.34"
+    tar_wrapper zxvf $LIBPNG_PREFIX.tar.gz
+    cd $LIBPNG_PREFIX
 
     # Disable features we don't need
-    cp -fv ../libpng-pngconf.h pngconf.h
+    cp -fv ../libpng-pngusr.dfa pngusr.dfa
     . ../update-config.sh
 
-    CFLAGS="$FLAGS $OSX_ARCH $OSX_FLAGS -O3" \
-    LDFLAGS="$FLAGS $OSX_ARCH $OSX_FLAGS -O3" \
+    CFLAGS="$CFLAGS_COMMON $OSX_ARCH $OSX_FLAGS -O3" \
+    CPPFLAGS="$CFLAGS_COMMON $OSX_ARCH $OSX_FLAGS -O3 -DFA_XTRA" \
+    LDFLAGS="$LDFLAGS_COMMON $OSX_ARCH $OSX_FLAGS -O3" \
         ./configure --prefix=$BUILD \
-        --disable-dependency-tracking
+        --disable-dependency-tracking 
     $MAKE && $MAKE check
     if [ $? != 0 ]; then
         echo "make failed"
@@ -1321,21 +1310,35 @@ function build_libpng {
     fi
     $MAKE install
     cd ..
-
-    rm -rf libpng-1.4.3
+    
+    rm -rf $LIBPNG_PREFIX
 }
 
 function build_giflib {
     if [ -f $BUILD/include/gif_lib.h ]; then
-        return
+        # Determine the version of the last-built giflib
+        GIF_MAJOR=`grep 'GIFLIB_MAJOR' $BUILD/include/gif_lib.h | sed 's/.*_MAJOR\ //g'`
+        if [ ! -z $GIF_MAJOR ]; then
+            # FFmpeg uses a scheme similar to Semantic Versioning (http://semver.org/)
+            # The micro version (patch level) is always three digits
+            GIF_MINOR=`grep 'GIFLIB_MINOR' $BUILD/include/gif_lib.h | sed 's/.*_MINOR\ //g'`
+            GIF_RELEASE=`grep 'GIFLIB_RELEASE' $BUILD/include/gif_lib.h | sed 's/.*_RELEASE\ //g'`
+            GIF_VERSION=`echo "$GIF_MAJOR"."$GIF_MINOR"."$GIF_RELEASE" | sed "s#\ *)\ *##g" | \
+                        sed -e 's/\.\([0-9][0-9]\)/\1/g' -e 's/\.\([0-9]\)/0\1/g' -e 's/^[0-9]\{3,4\}$/&00/'`
+            # Only skip the build if it's using the right version
+            if [ $GIF_VERSION -ge 50104 ]; then
+                return
+            fi
+        fi 
     fi
 
     # build giflib
-    tar_wrapper zxf giflib-4.1.6.tar.gz
-    cd giflib-4.1.6
+    GIFLIB_PREFIX="giflib-5.1.4"
+    tar_wrapper zxvf $GIFLIB_PREFIX.tar.gz
+    cd $GIFLIB_PREFIX
     . ../update-config.sh
-    CFLAGS="$FLAGS $OSX_ARCH $OSX_FLAGS -O3" \
-    LDFLAGS="$FLAGS $OSX_ARCH $OSX_FLAGS -O3" \
+    CFLAGS="$CFLAGS_COMMON $OSX_ARCH $OSX_FLAGS -O3" \
+    LDFLAGS="$LDFLAGS_COMMON $OSX_ARCH $OSX_FLAGS -O3" \
         ./configure --prefix=$BUILD \
         --disable-dependency-tracking
     $MAKE
@@ -1345,37 +1348,42 @@ function build_giflib {
     fi
     $MAKE install
     cd ..
-
-    rm -rf giflib-4.1.6
+    
+    rm -rf $GIFLIB_PREFIX
 }
 
 function build_ffmpeg {
+    FFMPEG_PREFIX="ffmpeg-4.0"
+    FFMPEG_VER_TO_BUILD=`echo ${FFMPEG_PREFIX##*-} | sed "s#\ *)\ *##g" | \
+            sed -e 's/\.\([0-9][0-9]\)/\1/g' -e 's/\.\([0-9]\)/0\1/g' -e 's/^[0-9]\{3,4\}$/&00/'`
     echo "build ffmpeg"
     if [ -f $BUILD/include/libavformat/avformat.h ]; then
-        echo "found avformat.h - returning"
-        return
+        # Determine the version of the last-built ffmpeg
+        if [ -f $BUILD/share/ffmpeg/VERSION ]; then
+            FFMPEG_VER_FOUND=`cat $BUILD/share/ffmpeg/VERSION | sed "s#\ *)\ *##g" | \
+            sed -e 's/\.\([0-9][0-9]\)/\1/g' -e 's/\.\([0-9]\)/0\1/g' -e 's/^[0-9]\{3,4\}$/&00/'`
+            # Only skip the build if it's using the most recent version
+            if [ $FFMPEG_VER_FOUND -ge $FFMPEG_VER_TO_BUILD ]; then
+                return
+            fi
+        fi
     fi
 
     # build ffmpeg, enabling only the things libmediascan uses
-    tar_wrapper jxf ffmpeg-0.8.4.tar.bz2
-    cd ffmpeg-0.8.4
+    tar_wrapper jxf $FFMPEG_PREFIX.tar.bz2
+    cd $FFMPEG_PREFIX
     . ../update-config.sh
-
-    if [ "$MACHINE" = "padre" ]; then
-        patch -p0 < ../ffmpeg-padre-configure.patch
-    fi
-
+    
     echo "Configuring FFmpeg..."
 
     # x86: Disable all but the lowend MMX ASM
     # ARM: Disable all
     # PPC: Disable AltiVec
-    FFOPTS="--prefix=$BUILD --disable-ffmpeg --disable-ffplay --disable-ffprobe --disable-ffserver \
+    FFOPTS="--prefix=$BUILD --disable-ffmpeg --disable-ffplay --disable-ffprobe \
         --disable-avdevice --enable-pic \
-        --disable-amd3dnow --disable-amd3dnowext --disable-mmx2 --disable-sse --disable-ssse3 --disable-avx \
-        --disable-armv5te --disable-armv6 --disable-armv6t2 --disable-armvfp --disable-iwmmxt --disable-mmi --disable-neon \
+        --disable-amd3dnow --disable-amd3dnowext --disable-sse --disable-ssse3 --disable-avx \
+        --disable-armv5te --disable-armv6 --disable-armv6t2 --disable-mmi --disable-neon \
         --disable-altivec \
-        --disable-vis \
         --enable-zlib --disable-bzlib \
         --disable-everything --enable-swscale \
         --enable-decoder=h264 --enable-decoder=mpeg1video --enable-decoder=mpeg2video \
@@ -1393,8 +1401,16 @@ function build_ffmpeg {
         --enable-parser=mpeg4video --enable-parser=mpegaudio --enable-parser=mpegvideo --enable-parser=vc1 \
         --enable-demuxer=asf --enable-demuxer=avi --enable-demuxer=flv --enable-demuxer=h264 \
         --enable-demuxer=matroska --enable-demuxer=mov --enable-demuxer=mpegps --enable-demuxer=mpegts --enable-demuxer=mpegvideo \
-        --enable-protocol=file --cc=$GCC"
+        --enable-protocol=file --cc=$GCC --cxx=$GXX"
 
+    if [ $FFMPEG_VER_TO_BUILD -lt 400 ]; then
+        FFOPTS="FFOPTS --disable-ffserver"
+    fi
+
+    if [ "$MACHINE" = "padre" ]; then
+        FFOPTS="$FFOPTS --arch=sparc"
+    fi
+  
     # ASM doesn't work right on x86_64
     # XXX test --arch options on Linux
     if [[ "$ARCH" = "x86_64-linux-thread-multi" || "$ARCH" =~ "amd64-freebsd" || "$ARCH" = "i86pc-solaris-thread-multi-64int" ]]; then
@@ -1410,13 +1426,10 @@ function build_ffmpeg {
     fi
 
     if [ "$OS" = "Darwin" ]; then
-        SAVED_FLAGS=$FLAGS
-
         # Build 64-bit fork (10.6/10.7)
         if [ "$OSX_VER" != "10.5" ]; then
-            FLAGS="-arch x86_64 -O3 -fPIC $OSX_FLAGS"
-            CFLAGS="$FLAGS" \
-            LDFLAGS="$FLAGS" \
+            CFLAGS="-arch x86_64 -O3 -fPIC $OSX_FLAGS" \
+            LDFLAGS="-arch x86_64 -O3 -fPIC $OSX_FLAGS" \
                 ./configure $FFOPTS --arch=x86_64
 
             $MAKE
@@ -1433,9 +1446,8 @@ function build_ffmpeg {
 
         # Build 32-bit fork (all OSX versions)
         $MAKE clean
-        FLAGS="-arch i386 -O3 $OSX_FLAGS"
-        CFLAGS="$FLAGS" \
-        LDFLAGS="$FLAGS" \
+        CFLAGS="-arch i386 -O3 $OSX_FLAGS" \
+        LDFLAGS="-arch i386 -O3 $OSX_FLAGS" \
             ./configure $FFOPTS --arch=x86_32
 
         $MAKE
@@ -1452,9 +1464,8 @@ function build_ffmpeg {
         # Build PPC fork (10.5)
         if [ "$OSX_VER" = "10.5" ]; then
             $MAKE clean
-            FLAGS="-arch ppc -O3 $OSX_FLAGS"
-            CFLAGS="$FLAGS" \
-            LDFLAGS="$FLAGS" \
+            CFLAGS="-arch ppc -O3 $OSX_FLAGS" \
+            LDFLAGS="-arch ppc -O3 $OSX_FLAGS" \
                 ./configure $FFOPTS --arch=ppc --disable-altivec
 
             $MAKE
@@ -1489,11 +1500,10 @@ function build_ffmpeg {
         cp -f libavutil.a $BUILD/lib/libavutil.a
         cp -f libswscale.a $BUILD/lib/libswscale.a
 
-        FLAGS=$SAVED_FLAGS
         cd ..
     else
-        CFLAGS="$FLAGS -O3" \
-        LDFLAGS="$FLAGS -O3" \
+        CFLAGS="$CFLAGS_COMMON -O3" \
+        LDFLAGS="$LDFLAGS_COMMON -O3" \
             ./configure $FFOPTS
 
         $MAKE
@@ -1502,10 +1512,12 @@ function build_ffmpeg {
             exit $?
         fi
         $MAKE install
-        cd ..
     fi
+    # Starting with 3.4.1, we copy the release to ease last-built version detection
+    cp VERSION $BUILD/share/ffmpeg/VERSION
 
-    rm -rf ffmpeg-0.8.4
+    cd ..
+    rm -r $FFMPEG_PREFIX
 }
 
 function build_bdb {
@@ -1520,8 +1532,9 @@ function build_bdb {
     fi
 
     # build bdb
-    tar_wrapper zxf db-5.1.25.tar.gz
-    cd db-5.1.25/dist
+    DB_PREFIX="db-6.2.32"
+    tar_wrapper zxvf $DB_PREFIX.tar.gz
+    cd $DB_PREFIX/dist
     . ../../update-config.sh
     cd ../build_unix
 
@@ -1530,8 +1543,8 @@ function build_bdb {
        patch -p0 < ../db51-src_dbinc_atomic.patch
        popd
     fi
-    CFLAGS="$FLAGS $OSX_ARCH $OSX_FLAGS -O3" \
-    LDFLAGS="$FLAGS $OSX_ARCH $OSX_FLAGS -O3" \
+    CFLAGS="$CFLAGS_COMMON $OSX_ARCH $OSX_FLAGS -O3" \
+    LDFLAGS="$CFLAGS_COMMON $OSX_ARCH $OSX_FLAGS -O3 " \
         ../dist/configure --prefix=$BUILD $MUTEX \
         --with-cryptography=no -disable-hash --disable-queue --disable-replication --disable-statistics --disable-verify \
         --disable-dependency-tracking --disable-shared
@@ -1542,8 +1555,8 @@ function build_bdb {
     fi
     $MAKE install
     cd ../..
-
-    rm -rf db-5.1.25
+    
+    rm -rf $DB_PREFIX
 }
 
 # Build a single module if requested, or all
