@@ -30,11 +30,23 @@ addons:
     packages:
       - nasm
       - rsync
-      - gettext
 
 
 matrix:
   include:
+    - name: "osx:10.10_xcode:6.4"
+      language: cpp
+      os: osx
+      osx_image: xcode6.4
+      env:
+        - EVERYTHING=awesome
+      script:
+        - rvm ruby-2.3.7 do brew update
+        - rvm ruby-2.3.7 do brew bundle --verbose --global
+        - rvm ruby-2.3.7 do brew install nasm
+        - rvm ruby-2.3.7 do brew install rsync
+        - cd CPAN
+        - bash -o errexit buildme.sh
     - name: "osx:10.13_xcode:10.1"
       language: cpp
       os: osx
@@ -120,15 +132,6 @@ matrix:
       language: cpp
       os: osx
       osx_image: xcode7.3
-      env:
-        - EVERYTHING=awesome
-      script:
-        - cd CPAN
-        - bash -o errexit buildme.sh
-    - name: "osx:10.10_xcode:6.4"
-      language: cpp
-      os: osx
-      osx_image: xcode6.4
       env:
         - EVERYTHING=awesome
       script:
