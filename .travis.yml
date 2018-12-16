@@ -43,7 +43,7 @@ matrix:
         - EVERYTHING=awesome
       script:
         - cd CPAN
-        - bash -o errexit buildme.sh
+        - bash -o xtrace buildme.sh
     - name: "osx:10.13_xcode:10"
       language: cpp
       os: osx
@@ -52,7 +52,7 @@ matrix:
         - EVERYTHING=awesome
       script:
         - cd CPAN
-        - bash -o errexit buildme.sh
+        - bash -o xtrace buildme.sh
     - name: "osx:10.13_xcode:9.4"
       language: cpp
       os: osx
@@ -61,7 +61,7 @@ matrix:
         - EVERYTHING=awesome
       script:
         - cd CPAN
-        - bash -o errexit buildme.sh
+        - bash -o xtrace buildme.sh
     - name: "osx:10.13_xcode:9.3"
       language: cpp
       os: osx
@@ -70,7 +70,7 @@ matrix:
         - EVERYTHING=awesome
       script:
         - cd CPAN
-        - bash -o errexit buildme.sh
+        - bash -o xtrace buildme.sh
     - name: "osx:10.12_xcode:9.2"
       language: cpp
       os: osx
@@ -79,7 +79,7 @@ matrix:
         - EVERYTHING=awesome
       script:
         - cd CPAN
-        - bash -o errexit buildme.sh
+        - bash -o xtrace buildme.sh
     - name: "osx:10.12_xcode:9.1"
       language: cpp
       os: osx
@@ -88,7 +88,7 @@ matrix:
         - EVERYTHING=awesome
       script:
         - cd CPAN
-        - bash -o errexit buildme.sh
+        - bash -o xtrace buildme.sh
     - name: "osx:10.12_xcode:9"
       language: cpp
       os: osx
@@ -97,7 +97,7 @@ matrix:
         - EVERYTHING=awesome
       script:
         - cd CPAN
-        - bash -o errexit buildme.sh
+        - bash -o xtrace buildme.sh
     - name: "osx:10.12_xcode:8.3"
       language: cpp
       os: osx
@@ -106,7 +106,7 @@ matrix:
         - EVERYTHING=awesome
       script:
         - cd CPAN
-        - bash -o errexit buildme.sh
+        - bash -o xtrace buildme.sh
     - name: "osx:10.12_xcode:8.0"
       language: cpp
       os: osx
@@ -115,7 +115,7 @@ matrix:
         - EVERYTHING=awesome
       script:
         - cd CPAN
-        - bash -o errexit buildme.sh
+        - bash -o xtrace buildme.sh
     - name: "osx:10.11_xcode:7.3"
       language: cpp
       os: osx
@@ -124,7 +124,7 @@ matrix:
         - EVERYTHING=awesome
       script:
         - cd CPAN
-        - bash -o errexit buildme.sh
+        - bash -o xtrace buildme.sh
     - name: "osx:10.10_xcode:6.4"
       language: cpp
       os: osx
@@ -133,13 +133,13 @@ matrix:
         - EVERYTHING=awesome
       script:
         - cd CPAN
-        - bash -o errexit buildme.sh
+        - bash -o xtrace buildme.sh
 
 install: true
 
 script:
   - cd CPAN
-  - bash -o errexit buildme.sh
+  - bash -o xtrace buildme.sh
 
 notifications:
   email:
