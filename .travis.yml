@@ -41,10 +41,12 @@ matrix:
       env:
         - EVERYTHING=awesome
       script:
-        - rvm ruby-2.3.7 do brew update
-        - rvm ruby-2.3.7 do brew bundle --verbose --global
-        - rvm ruby-2.3.7 do brew install nasm
-        - rvm ruby-2.3.7 do brew install rsync
+        - rvm get stable
+        - rvm install ruby-2.3.5
+        - rvm ruby-2.3.5 do brew update
+        - rvm ruby-2.3.5 do brew bundle --verbose --global
+        - rvm ruby-2.3.5 do brew install nasm
+        - rvm ruby-2.3.5 do brew install rsync
         - cd CPAN
         - bash -o errexit buildme.sh
     - name: "osx:10.13_xcode:10.1"
