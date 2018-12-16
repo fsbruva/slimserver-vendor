@@ -42,6 +42,9 @@ matrix:
       env:
         - EVERYTHING=awesome
       script:
+        - brew update
+        - rvm install ruby-2.3.5
+        - rvm --default use ruby-2.3.5
         - rvm install ruby-2.3.5
         - rvm ruby-2.3.5 do brew update
         - rvm ruby-2.3.5 do brew install nasm
