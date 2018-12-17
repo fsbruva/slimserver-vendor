@@ -111,11 +111,19 @@ export CFLAGS_COMMON="-fPIC"
 export CXXFLAGS_COMMON="-fPIC"
 export LDFLAGS_COMMON="-fPIC"
 
+# Set default values prior to potential overwrite
+# Support a newer make if available, needed on ReadyNAS
+if [ -x /usr/local/bin/make ]; then
+    MAKE=/usr/local/bin/make
+else
+    MAKE=/usr/bin/make
+fi
+
 # This script uses the following precedence for FreeBSD:
 # 1. Environment values for CC/CXX/CPP (checks if $CC is already defined)
 # 2. Values defined in /etc/make.conf, or
 # 3. Stock build chain
-case $OS in
+case "$OS" in
     FreeBSD)
         BSD_MAJOR_VER=`uname -r | sed 's/\..*//g'`
         BSD_MINOR_VER=`uname -r | sed 's/.*\.//g'`
@@ -245,14 +253,6 @@ case $OS in
             OSX_ARCH="-arch x86_64"
             OSX_FLAGS="-mmacosx-version-min=$OSX_VER"
         fi    
-    ;;
-    *)
-        # Support a newer make if available, needed on ReadyNAS
-        if [ -x /usr/local/bin/make ]; then
-            export MAKE=/usr/local/bin/make
-        else
-            export MAKE=/usr/bin/make
-        fi
     ;;
 esac
 
