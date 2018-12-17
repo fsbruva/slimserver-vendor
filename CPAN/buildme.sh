@@ -265,7 +265,7 @@ for i in $GCC $GXX rsync nasm $MAKE ; do
     fi
 done
 
-if [ -n "$(find /usr/lib/ -maxdepth 1 -name '*libungif*' -print -quit}" ] ; then
+if [ -n "$(find /usr/lib/ -maxdepth 1 -name '*libungif*' -print -quit)" ] ; then
     echo "ON SOME PLATFORMS (Ubuntu/Debian at least) THE ABOVE LIBRARIES MAY NEED TO BE TEMPORARILY REMOVED TO ALLOW THE BUILD TO WORK"
 fi
 
