@@ -259,12 +259,17 @@ esac
 export MAKE=$MAKE
 
 for i in $GCC $GXX rsync nasm $MAKE ; do
-    which $i > /dev/null
-    if [ $? -ne 0 ] ; then
+    if ! [ -x "$(command -v $i)" ] ; then
         echo "$i not found - please install it"
         exit 1
     fi
 done
+
+if [ -n "$(find /usr/lib/ -maxdepth 1 -name '*libungif*' -print -quit}" ] ; then
+    echo "ON SOME PLATFORMS (Ubuntu/Debian at least) THE ABOVE LIBRARIES MAY NEED TO BE TEMPORARILY REMOVED TO ALLOW THE BUILD TO WORK"
+fi
+
+# Ready to actually begin building
 
 echo "Looks like your compiler is $GCC"
 $GCC --version
@@ -330,11 +335,6 @@ else
     echo "*"
     echo "********************************************************************************************"
     GCC_LIBCPP=false
-fi
-
-find /usr/lib/ -maxdepth 1 | grep libungif
-if [ $? -eq 0 ] ; then
-    echo "ON SOME PLATFORMS (Ubuntu/Debian at least) THE ABOVE LIBRARIES MAY NEED TO BE TEMPORARILY REMOVED TO ALLOW THE BUILD TO WORK"
 fi
 
 # Build dir
