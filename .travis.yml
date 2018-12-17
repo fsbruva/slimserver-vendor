@@ -15,7 +15,7 @@ os:
   - linux
 env:
   - CC=gcc && CXX=g++
-#  - CC=clang && CXX=clang++
+  - CC=clang && CXX=clang++
 
 addons:
   apt:
@@ -39,42 +39,54 @@ matrix:
       language: cpp
       os: osx
       osx_image: xcode6.4
+      # Need to explicitly set env here, to avoid the build matrix growing
+      # across the multiple Linux env's (gcc and clang both map to clang on OSX)
+      env: EVERYTHING=awesome
     - name: "osx:10.13_xcode:10.1"
       language: cpp
       os: osx
       osx_image: xcode10.1
+      env: EVERYTHING=awesome
     - name: "osx:10.13_xcode:10"
       language: cpp
       os: osx
       osx_image: xcode10
+      env: EVERYTHING=awesome
     - name: "osx:10.13_xcode:9.4"
       language: cpp
       os: osx
       osx_image: xcode9.4
+      env: EVERYTHING=awesome
     - name: "osx:10.13_xcode:9.3"
       language: cpp
       os: osx
       osx_image: xcode9.3
+      env: EVERYTHING=awesome
     - name: "osx:10.12_xcode:9.2"
       language: cpp
       os: osx
       osx_image: xcode9.2
+      env: EVERYTHING=awesome
     - name: "osx:10.12_xcode:9.1"
       language: cpp
       os: osx
       osx_image: xcode9.1
+      env: EVERYTHING=awesome
     - name: "osx:10.12_xcode:9"
       language: cpp
       os: osx
       osx_image: xcode9
+      env: EVERYTHING=awesome
     - name: "osx:10.12_xcode:8.3"
       language: cpp
       os: osx
       osx_image: xcode8.3
+      env: EVERYTHING=awesome
     - name: "osx:10.12_xcode:8.0"
       language: cpp
       os: osx
       osx_image: xcode8
+      env: EVERYTHING=awesome
     - name: "osx:10.11_xcode:7.3"
       language: cpp
       os: osx
