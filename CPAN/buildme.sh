@@ -169,7 +169,7 @@ case "$OS" in
             echo "ERROR: Please install GNU make (gmake)"
             exit
         fi
-        export MAKE=/usr/local/bin/gmake
+        MAKE=/usr/local/bin/gmake
     
         #for i in libgif libz libgd ; do
 	    for i in libz ; do
@@ -192,7 +192,7 @@ case "$OS" in
             echo "ERROR: Please install GNU make (gmake)"
             exit
         fi
-        export MAKE=/usr/bin/gmake
+        MAKE=/usr/bin/gmake
     ;;
     Linux)
         #for i in libgif libz libgd ; do
@@ -256,7 +256,9 @@ case "$OS" in
     ;;
 esac
 
-for i in $GCC $GXX rsync make ; do
+export MAKE=$MAKE
+
+for i in $GCC $GXX rsync nasm $MAKE ; do
     which $i > /dev/null
     if [ $? -ne 0 ] ; then
         echo "$i not found - please install it"
@@ -328,15 +330,6 @@ else
     echo "*"
     echo "********************************************************************************************"
     GCC_LIBCPP=false
-fi
-
-which yasm > /dev/null
-if [ $? -ne 0 ] ; then
-    which nasm > /dev/null
-    if [ $? -ne 0 ] ; then
-        echo "please install either yasm or nasm."
-        exit 1
-    fi
 fi
 
 find /usr/lib/ -maxdepth 1 | grep libungif
