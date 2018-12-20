@@ -214,7 +214,7 @@ case "$OS" in
     ;;
     Darwin)
         # figure out OSX version and customize SDK options (do not care about patch ver)
-        OSX_VER_STR=`/usr/sbin/sw_vers -productVersion |  sed "s#\ *)\ *##g" | sed 's/\.[0-9]*$//g'`
+        OSX_VER_STR=`/usr/bin/sw_vers -productVersion |  sed "s#\ *)\ *##g" | sed 's/\.[0-9]*$//g'`
 
         # This transforms the OS ver into a 4 digit number with leading zeros for the
         # Darwin version, e.g., 10.6 --> 1006, 10.12 --> 1012.
