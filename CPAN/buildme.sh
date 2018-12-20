@@ -1423,7 +1423,9 @@ function build_ffmpeg {
                 cp -fv libavutil/libavutil.a libavutil-x86_64.a
                 cp -fv libswscale/libswscale.a libswscale-x86_64.a
             else
-                cp -fv libavcodec/libav{codec,format,util}.a .
+                cp -fv libavcodec/libavcodec.a libavcodec.a
+                cp -fv libavformat/libavformat.a libavformat.a
+                cp -fv libavutil/libavutil.a libavutil.a
                 cp -fv libswscale/libswscale.a libswscale.a
             fi
         fi
