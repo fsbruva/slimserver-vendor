@@ -213,46 +213,31 @@ case "$OS" in
 	    done
     ;;
     Darwin)
-        # figure out OSX version and customize SDK options
-        OSX_VER=`/usr/sbin/system_profiler SPSoftwareDataType`
-        REGEX=' OS X.* (10\.[5-9])'
-        REGEX2=' OS X.* (10\.1[0-9])'
-        REGEX3=' macOS (10\.1[0-9])'
+        # figure out OSX version and customize SDK options (do not care about patch ver)
+        OSX_VER_STR=`/usr/sbin/sw_vers -productVersion |  sed "s#\ *)\ *##g" | sed 's/\.[0-9]*$//g'`
 
-        if [[ $OSX_VER =~ $REGEX3 ]]; then
-            OSX_VER=${BASH_REMATCH[1]}
-        elif [[ $OSX_VER =~ $REGEX ]]; then
-            OSX_VER=${BASH_REMATCH[1]}
-        elif [[ $OSX_VER =~ $REGEX2 ]]; then
-            OSX_VER=${BASH_REMATCH[1]}
-        else
-            echo "Unable to determine OSX version"
-            exit 0
-        fi
+        # This transforms the OS ver into a 4 digit number with leading zeros for the
+        # Darwin version, e.g., 10.6 --> 1006, 10.12 --> 1012.
+        OSX_VER=`echo "$OSX_VER_STR" | sed -e 's/\.\([0-9][0-9]\)/\1/g' -e 's/\.\([0-9]\)/0\1/g' -e 's/^[0-9]\{3\}$/&00/'`
 
-        if [ "$OSX_VER" = "10.5" ]; then
+        if [ "$OSX_VER" -eq 1005 ]; then
             # Leopard, build for i386/ppc with support back to 10.4
             OSX_ARCH="-arch i386 -arch ppc"
             OSX_FLAGS="-isysroot /Developer/SDKs/MacOSX10.4u.sdk -mmacosx-version-min=10.4"
-        elif [ "$OSX_VER" = "10.6" ]; then
+        elif [ "$OSX_VER" -eq 1006 ]; then
             # Snow Leopard, build for x86_64/i386 with support back to 10.5
             OSX_ARCH="-arch x86_64 -arch i386"
             OSX_FLAGS="-isysroot /Developer/SDKs/MacOSX10.5.sdk -mmacosx-version-min=10.5"
-        elif [ "$OSX_VER" = "10.7" ]; then
+        elif [ "$OSX_VER" -eq 1007 ]; then
             # Lion, build for x86_64 with support back to 10.6
             OSX_ARCH="-arch x86_64"
             OSX_FLAGS="-isysroot /Developer/SDKs/MacOSX10.6.sdk -mmacosx-version-min=10.6"
-        elif [ "$OSX_VER" = "10.9" ]; then
-            # Mavericks, build for x86_64 with support back to 10.9
+        elif [ "$OSX_VER" -ge 1009 ]; then
             OSX_ARCH="-arch x86_64"
-            OSX_FLAGS="-mmacosx-version-min=10.9"
-        elif [ "$OSX_VER" = "10.10" ]; then
-            # Yosemite, build for x86_64 with support back to 10.10
-            OSX_ARCH="-arch x86_64"
-            OSX_FLAGS="-mmacosx-version-min=10.10"
+            OSX_FLAGS="-mmacosx-version-min=$OSX_VER_STR"
         else
-            OSX_ARCH="-arch x86_64"
-            OSX_FLAGS="-mmacosx-version-min=$OSX_VER"
+            echo "Unsupported Mac OS version."
+            exit 1
         fi    
     ;;
 esac
@@ -1145,8 +1130,7 @@ function build_libjpeg {
 
     # build libjpeg-turbo on x86 platforms
     TURBO_VER="libjpeg-turbo-1.5.3"
-    # skip on 10.9 until we've been able to build nasm from macports
-    if [ "$OS" = "Darwin" -a "$OSX_VER" != "10.5" ]; then
+    if [ "$OS" = "Darwin" -a "$OSX_VER" -ne 1005 ]; then
         # Build i386/x86_64 versions of turbo
         tar_wrapper zxf $TURBO_VER.tar.gz
         cd $TURBO_VER
@@ -1163,36 +1147,42 @@ function build_libjpeg {
             --disable-dependency-tracking
         $MAKE
         if [ $? != 0 ]; then
-            echo "make failed"
+            echo "64-bit OSX make failed"
             exit $?
         fi
-        cp -fv .libs/libjpeg.a libjpeg-x86_64.a
 
-        # Build 32-bit fork
-        if [ $CLEAN -eq 1 ]; then
-            $MAKE clean
+        # We only need to build the 32-bit for for older OSX. All versions
+        # since 10.7 are 64-bit only.
+        if [ "$OSX_VER" -lt 1007 ]; then
+            # Prep for fork merging
+            cp -fv .libs/libjpeg.a libjpeg-x86_64.a
+
+            # Build 32-bit fork, but only for OSX 10.6 and older.
+             if [ $CLEAN -eq 1 ]; then
+                 $MAKE clean
+             fi
+             CFLAGS="-O3 -m32 $OSX_FLAGS" \
+             CXXFLAGS="-O3 -m32 $OSX_FLAGS" \
+             LDFLAGS="-m32 $OSX_FLAGS" \
+                 ./configure -q --host i686-apple-darwin --prefix=$BUILD NASM=/usr/local/bin/nasm \
+                 --disable-dependency-tracking
+             $MAKE
+             if [ $? != 0 ]; then
+                 echo "32-bit OSX make failed"
+                 exit $?
+             fi
+             cp -fv .libs/libjpeg.a libjpeg-i386.a
+
+             # Combine the forks
+             lipo -create libjpeg-x86_64.a libjpeg-i386.a -output libjpeg.a
         fi
-        CFLAGS="-O3 -m32 $OSX_FLAGS" \
-        CXXFLAGS="-O3 -m32 $OSX_FLAGS" \
-        LDFLAGS="-m32 $OSX_FLAGS" \
-            ./configure -q --host i686-apple-darwin --prefix=$BUILD NASM=/usr/local/bin/nasm \
-            --disable-dependency-tracking
-        $MAKE
-        if [ $? != 0 ]; then
-            echo "make failed"
-            exit $?
-        fi
-        cp -fv .libs/libjpeg.a libjpeg-i386.a
 
-        # Combine the forks
-        lipo -create libjpeg-x86_64.a libjpeg-i386.a -output libjpeg.a
-
-        # Install and replace libjpeg.a with universal version
+        # Install and replace libjpeg.a with the one we built
         $MAKE install
         cp -f libjpeg.a $BUILD/lib/libjpeg.a
         cd ..
 
-    elif [ "$OS" = "Darwin" -a "$OSX_VER" = "10.5" ]; then
+    elif [ "$OS" = "Darwin" -a "$OSX_VER" -ne 1005 ]; then
         # combine i386 turbo with ppc libjpeg
 
         # build i386 turbo
@@ -1428,43 +1418,46 @@ function build_ffmpeg {
     fi
 
     if [ "$OS" = "Darwin" ]; then
-        # Build 64-bit fork (10.6/10.7)
-        if [ "$OSX_VER" != "10.5" ]; then
+        # Build 64-bit fork
+        if [ "$OSX_VER" -ne 1005 ]; then
             CFLAGS="-arch x86_64 -O3 -fPIC $OSX_FLAGS" \
             LDFLAGS="-arch x86_64 -O3 -fPIC $OSX_FLAGS" \
                 ./configure $FFOPTS --arch=x86_64
 
             $MAKE
             if [ $? != 0 ]; then
-                echo "make failed"
+                echo "64-bit ffmpeg make failed"
                 exit $?
             fi
+        fi
 
+        # Build 32-bit fork (all OSX versions less than 10.7)
+        if [ "$OSX_VER" -lt 1007 ]; then
+            # Prep for fork merging by arch specific rename
             cp -fv libavcodec/libavcodec.a libavcodec-x86_64.a
             cp -fv libavformat/libavformat.a libavformat-x86_64.a
             cp -fv libavutil/libavutil.a libavutil-x86_64.a
             cp -fv libswscale/libswscale.a libswscale-x86_64.a
+
+            $MAKE clean
+            CFLAGS="-arch i386 -O3 $OSX_FLAGS" \
+            LDFLAGS="-arch i386 -O3 $OSX_FLAGS" \
+                ./configure -q $FFOPTS --arch=x86_32
+
+            $MAKE
+            if [ $? != 0 ]; then
+                echo "32-bit ffmpeg make failed"
+                exit $?
+            fi
+
+            cp -fv libavcodec/libavcodec.a libavcodec-i386.a
+            cp -fv libavformat/libavformat.a libavformat-i386.a
+            cp -fv libavutil/libavutil.a libavutil-i386.a
+            cp -fv libswscale/libswscale.a libswscale-i386.a
         fi
-
-        # Build 32-bit fork (all OSX versions)
-        $MAKE clean
-        CFLAGS="-arch i386 -O3 $OSX_FLAGS" \
-        LDFLAGS="-arch i386 -O3 $OSX_FLAGS" \
-            ./configure -q $FFOPTS --arch=x86_32
-
-        $MAKE
-        if [ $? != 0 ]; then
-            echo "make failed"
-            exit $?
-        fi
-
-        cp -fv libavcodec/libavcodec.a libavcodec-i386.a
-        cp -fv libavformat/libavformat.a libavformat-i386.a
-        cp -fv libavutil/libavutil.a libavutil-i386.a
-        cp -fv libswscale/libswscale.a libswscale-i386.a
 
         # Build PPC fork (10.5)
-        if [ "$OSX_VER" = "10.5" ]; then
+        if [ "$OSX_VER" -eq 1005 ]; then
             $MAKE clean
             CFLAGS="-arch ppc -O3 $OSX_FLAGS" \
             LDFLAGS="-arch ppc -O3 $OSX_FLAGS" \
@@ -1472,7 +1465,7 @@ function build_ffmpeg {
 
             $MAKE
             if [ $? != 0 ]; then
-                echo "make failed"
+                echo "ppc ffmpeg make failed"
                 exit $?
             fi
 
@@ -1482,20 +1475,21 @@ function build_ffmpeg {
             cp -fv libswscale/libswscale.a libswscale-ppc.a
         fi
 
-        # Combine the forks
-        if [ "$OSX_VER" = "10.5" ]; then
+        # Combine the forks (if necessary). OSx 10.7 and onwards do not need
+        # universal binaries.
+        if [ "$OSX_VER" -eq 1005 ]; then
             lipo -create libavcodec-i386.a libavcodec-ppc.a -output libavcodec.a
             lipo -create libavformat-i386.a libavformat-ppc.a -output libavformat.a
             lipo -create libavutil-i386.a libavutil-ppc.a -output libavutil.a
             lipo -create libswscale-i386.a libswscale-ppc.a -output libswscale.a
-        else
+        elif [ "$OSX_VER" -lt 1007 ]; then
             lipo -create libavcodec-x86_64.a libavcodec-i386.a -output libavcodec.a
             lipo -create libavformat-x86_64.a libavformat-i386.a -output libavformat.a
             lipo -create libavutil-x86_64.a libavutil-i386.a -output libavutil.a
             lipo -create libswscale-x86_64.a libswscale-i386.a -output libswscale.a
         fi
 
-        # Install and replace libs with universal versions
+        # Install and replace libs with versions we built
         $MAKE install
         cp -f libavcodec.a $BUILD/lib/libavcodec.a
         cp -f libavformat.a $BUILD/lib/libavformat.a
