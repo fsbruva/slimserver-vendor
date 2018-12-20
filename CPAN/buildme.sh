@@ -124,7 +124,7 @@ fi
 # 1. Environment values for CC/CXX/CPP (checks if $CC is already defined)
 # 2. Values defined in /etc/make.conf, or
 # 3. Stock build chain
-case $OS in
+case "$OS" in
     FreeBSD)
         BSD_MAJOR_VER=`uname -r | sed 's/\..*//g'`
         BSD_MINOR_VER=`uname -r | sed 's/.*\.//g'`
