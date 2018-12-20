@@ -1156,6 +1156,7 @@ function build_libjpeg {
                 # Prep for fork merging - 10.6 requires universal binaries
                 cp -fv .libs/libjpeg.a ../libjpeg-x86_64.a
             else
+                $MAKE install
                 cp -fv .libs/libjpeg.a ../libjpeg.a
             fi
             cd ..
@@ -1179,6 +1180,7 @@ function build_libjpeg {
                 echo "32-bit OSX make failed"
                 exit $?
             fi
+            $MAKE install
             cp -fv .libs/libjpeg.a ../libjpeg-i386.a
             cd ..
         fi
@@ -1214,7 +1216,6 @@ function build_libjpeg {
         fi
 
         # Install and replace libjpeg.a with the one we built
-        $MAKE install
         mv -fv libjpeg.a $BUILD/lib/libjpeg.a
         rm -fv libjpeg-x86_64.a libjpeg-i386.a libjpeg-ppc.a
 
