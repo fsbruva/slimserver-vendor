@@ -234,7 +234,7 @@ case "$OS" in
             OSX_FLAGS="-isysroot /Developer/SDKs/MacOSX10.6.sdk -mmacosx-version-min=10.6"
         elif [ "$OSX_VER" -ge 1009 ]; then
             OSX_ARCH="-arch x86_64"
-            OSX_FLAGS="-mmacosx-version-min=10.7"
+            OSX_FLAGS="-mmacosx-version-min=10.9"
         else
             echo "Unsupported Mac OS version."
             exit 1
