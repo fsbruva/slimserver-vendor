@@ -112,6 +112,14 @@ export CFLAGS_COMMON="-fPIC"
 export CXXFLAGS_COMMON="-fPIC"
 export LDFLAGS_COMMON="-fPIC"
 
+# Set default values prior to potential overwrite
+# Support a newer make if available, needed on ReadyNAS
+if [ -x /usr/local/bin/make ]; then
+    MAKE_BIN=/usr/local/bin/make
+else
+    MAKE_BIN=/usr/bin/make
+fi
+
 # This script uses the following precedence for FreeBSD:
 # 1. Environment values for CC/CXX/CPP (checks if $CC is already defined)
 # 2. Values defined in /etc/make.conf, or
@@ -162,7 +170,7 @@ case $OS in
             echo "ERROR: Please install GNU make (gmake)"
             exit
         fi
-        export MAKE=/usr/local/bin/gmake
+        MAKE_BIN=/usr/local/bin/gmake
     
         #for i in libgif libz libgd ; do
 	    for i in libz ; do
@@ -185,7 +193,7 @@ case $OS in
             echo "ERROR: Please install GNU make (gmake)"
             exit
         fi
-        export MAKE=/usr/bin/gmake
+        MAKE_BIN=/usr/bin/gmake
     ;;
     Linux)
         #for i in libgif libz libgd ; do
@@ -247,17 +255,12 @@ case $OS in
             OSX_FLAGS="-mmacosx-version-min=$OSX_VER"
         fi    
     ;;
-    *)
-        # Support a newer make if available, needed on ReadyNAS
-        if [ -x /usr/local/bin/make ]; then
-            export MAKE=/usr/local/bin/make
-        else
-            export MAKE=/usr/bin/make
-        fi
-    ;;
 esac
 
-for i in $GCC $GXX rsync make autoreconf ; do
+# Export the selected MAKE value
+export MAKE=$MAKE_BIN
+
+for i in autoreconf $GCC $GXX $MAKE nasm rsync ; do
     if ! [ -x "$(command -v $i)" ] ; then
         echo "$i not found - please install it"
         exit 1
@@ -328,11 +331,6 @@ else
     echo "*"
     echo "********************************************************************************************"
     GCC_LIBCPP=false
-fi
-
-if ! [ -x "$(command -v nasm)" ]; then
-    echo "Please install nasm (needed for ffmpeg and libjpeg)."
-    exit 1
 fi
 
 if [ -n "$(find /usr/lib/ -maxdepth 1 -name '*libungif*' -print -quit)" ] ; then
