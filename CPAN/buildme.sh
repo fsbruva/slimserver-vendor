@@ -234,7 +234,7 @@ case "$OS" in
             OSX_FLAGS="-isysroot /Developer/SDKs/MacOSX10.6.sdk -mmacosx-version-min=10.6"
         elif [ "$OSX_VER" -ge 1009 ]; then
             OSX_ARCH="-arch x86_64"
-            OSX_FLAGS="-mmacosx-version-min=$OSX_VER_STR"
+            OSX_FLAGS="-mmacosx-version-min=10.7"
         else
             echo "Unsupported Mac OS version."
             exit 1
@@ -1130,108 +1130,93 @@ function build_libjpeg {
 
     # build libjpeg-turbo on x86 platforms
     TURBO_VER="libjpeg-turbo-1.5.3"
-    if [ "$OS" = "Darwin" -a "$OSX_VER" -ne 1005 ]; then
-        # Build i386/x86_64 versions of turbo
-        tar_wrapper zxf $TURBO_VER.tar.gz
-        cd $TURBO_VER
+    tar_wrapper zxf $TURBO_VER.tar.gz
+    if [ "$OS" = "Darwin" ]; then
+        if [ "$OSX_VER" -ge 1006 ]; then
+            # Build x86_64 versions of turbo - 64 bit OS was introduced in 10.6
+            cd $TURBO_VER
 
-        # Disable features we don't need
-        patch -p0 < ../libjpeg-turbo-jmorecfg.h.patch
+            # Disable features we don't need
+            patch -p0 < ../libjpeg-turbo-jmorecfg.h.patch
 
-        # Build 64-bit fork
-        autoreconf -fiv
-        CFLAGS="-O3 $OSX_FLAGS" \
-        CXXFLAGS="-O3 $OSX_FLAGS" \
-        LDFLAGS="$OSX_FLAGS" \
-            ./configure -q --prefix=$BUILD --host x86_64-apple-darwin NASM=/usr/local/bin/nasm \
-            --disable-dependency-tracking
-        $MAKE
-        if [ $? != 0 ]; then
-            echo "64-bit OSX make failed"
-            exit $?
+            # Build 64-bit fork
+            autoreconf -fiv
+            CFLAGS="-O3 $OSX_FLAGS" \
+            CXXFLAGS="-O3 $OSX_FLAGS" \
+            LDFLAGS="$OSX_FLAGS" \
+                ./configure -q --prefix=$BUILD --host x86_64-apple-darwin NASM=/usr/local/bin/nasm \
+                --disable-dependency-tracking
+            $MAKE
+            if [ $? != 0 ]; then
+                echo "64-bit OSX make failed"
+                exit $?
+            fi
+
+            if [ "$OSX_VER" -eq 1006 ]; then
+                # Prep for fork merging - 10.6 requires universal binaries
+                cp -fv .libs/libjpeg.a ../libjpeg-x86_64.a
+            else
+                cp -fv .libs/libjpeg.a ../libjpeg.a
+            fi
+            cd ..
         fi
 
         # We only need to build the 32-bit for for older OSX. All versions
         # since 10.7 are 64-bit only.
-        if [ "$OSX_VER" -lt 1007 ]; then
-            # Prep for fork merging
-            cp -fv .libs/libjpeg.a libjpeg-x86_64.a
-
+        if [ "$OSX_VER" -le 1006 ]; then
             # Build 32-bit fork, but only for OSX 10.6 and older.
-             if [ $CLEAN -eq 1 ]; then
+            cd $TURBO_VER
+            if [ $CLEAN -eq 1 ]; then
                  $MAKE clean
-             fi
-             CFLAGS="-O3 -m32 $OSX_FLAGS" \
-             CXXFLAGS="-O3 -m32 $OSX_FLAGS" \
-             LDFLAGS="-m32 $OSX_FLAGS" \
-                 ./configure -q --host i686-apple-darwin --prefix=$BUILD NASM=/usr/local/bin/nasm \
-                 --disable-dependency-tracking
-             $MAKE
-             if [ $? != 0 ]; then
-                 echo "32-bit OSX make failed"
-                 exit $?
-             fi
-             cp -fv .libs/libjpeg.a libjpeg-i386.a
+            fi
+            CFLAGS="-O3 -m32 $OSX_FLAGS" \
+            CXXFLAGS="-O3 -m32 $OSX_FLAGS" \
+            LDFLAGS="-m32 $OSX_FLAGS" \
+                ./configure -q --host i686-apple-darwin --prefix=$BUILD NASM=/usr/local/bin/nasm \
+                --disable-dependency-tracking
+            $MAKE
+            if [ $? != 0 ]; then
+                echo "32-bit OSX make failed"
+                exit $?
+            fi
+            cp -fv .libs/libjpeg.a ../libjpeg-i386.a
+            cd ..
+        fi
 
-             # Combine the forks
-             lipo -create libjpeg-x86_64.a libjpeg-i386.a -output libjpeg.a
+        # We only need to build the ppc for for older 10.5.
+        if [ "$OSX_VER" -eq 1005 ]; then
+            # build ppc libjpeg 6b
+            tar_wrapper zxf jpegsrc.v6b.tar.gz
+            cd jpeg-6b
+
+            # Disable features we don't need
+            cp -fv ../libjpeg62-jmorecfg.h jmorecfg.h
+
+            CFLAGS="-arch ppc -O3 $OSX_FLAGS" \
+            LDFLAGS="-arch ppc -O3 $OSX_FLAGS" \
+                ./configure -q --prefix=$BUILD \
+                --disable-dependency-tracking
+            $MAKE
+            if [ $? != 0 ]; then
+                echo "make failed"
+                exit $?
+            fi
+            cp -fv libjpeg.a ../libjpeg-ppc.a
+            cd ..
+        fi
+
+        # Combine the forks (only needed for those platforms which require universal binaries)
+        if [ "$OSX_VER" -eq 1005 ]; then
+            lipo -create libjpeg-i386.a libjpeg-ppc.a -output libjpeg.a
+        elif [ "$OSX_VER" -lt 1007 ] ; then
+            # Combine the forks
+            lipo -create libjpeg-x86_64.a libjpeg-i386.a -output libjpeg.a
         fi
 
         # Install and replace libjpeg.a with the one we built
         $MAKE install
-        cp -f libjpeg.a $BUILD/lib/libjpeg.a
-        cd ..
-
-    elif [ "$OS" = "Darwin" -a "$OSX_VER" -ne 1005 ]; then
-        # combine i386 turbo with ppc libjpeg
-
-        # build i386 turbo
-        tar_wrapper zxf $TURBO_VER.tar.gz
-        cd $TURBO_VER
-
-        # Disable features we don't need
-        patch -p0 < ../libjpeg-turbo-jmorecfg.h.patch
-
-        autoreconf -fi
-        CFLAGS="-O3 -m32 $OSX_FLAGS" \
-        CXXFLAGS="-O3 -m32 $OSX_FLAGS" \
-        LDFLAGS="-m32 $OSX_FLAGS" \
-            ./configure -q --host i686-apple-darwin --prefix=$BUILD NASM=/usr/local/bin/nasm \
-            --disable-dependency-tracking
-        $MAKE
-        if [ $? != 0 ]; then
-            echo "make failed"
-            exit $?
-        fi
-        $MAKE install
-        cp -fv .libs/libjpeg.a ../libjpeg-i386.a
-        cd ..
-
-        # build ppc libjpeg 6b
-        tar_wrapper zxf jpegsrc.v6b.tar.gz
-        cd jpeg-6b
-
-        # Disable features we don't need
-        cp -fv ../libjpeg62-jmorecfg.h jmorecfg.h
-
-        CFLAGS="-arch ppc -O3 $OSX_FLAGS" \
-        LDFLAGS="-arch ppc -O3 $OSX_FLAGS" \
-            ./configure -q --prefix=$BUILD \
-            --disable-dependency-tracking
-        $MAKE
-        if [ $? != 0 ]; then
-            echo "make failed"
-            exit $?
-        fi
-        cp -fv libjpeg.a ../libjpeg-ppc.a
-        cd ..
-
-        # Combine the forks
-        lipo -create libjpeg-i386.a libjpeg-ppc.a -output libjpeg.a
-
-        # Replace libjpeg library
         mv -fv libjpeg.a $BUILD/lib/libjpeg.a
-        rm -fv libjpeg-i386.a libjpeg-ppc.a
+        rm -fv libjpeg-x86_64.a libjpeg-i386.a libjpeg-ppc.a
 
     elif [[ "$ARCH" =~ "i386-linux" || "$ARCH" =~ "x86_64-linux" || "$ARCH" =~ "i86pc-solaris" || "$OS" = "FreeBSD" ]]; then
         # build libjpeg-turbo
@@ -1419,7 +1404,7 @@ function build_ffmpeg {
 
     if [ "$OS" = "Darwin" ]; then
         # Build 64-bit fork
-        if [ "$OSX_VER" -ne 1005 ]; then
+        if [ "$OSX_VER" -ge 1006 ]; then
             CFLAGS="-arch x86_64 -O3 -fPIC $OSX_FLAGS" \
             LDFLAGS="-arch x86_64 -O3 -fPIC $OSX_FLAGS" \
                 ./configure $FFOPTS --arch=x86_64
@@ -1429,16 +1414,21 @@ function build_ffmpeg {
                 echo "64-bit ffmpeg make failed"
                 exit $?
             fi
+
+            if [ "$OSX_VER" -eq 1006 ]; then
+                # Prep for fork merging by arch specific rename
+                cp -fv libavcodec/libavcodec.a libavcodec-x86_64.a
+                cp -fv libavformat/libavformat.a libavformat-x86_64.a
+                cp -fv libavutil/libavutil.a libavutil-x86_64.a
+                cp -fv libswscale/libswscale.a libswscale-x86_64.a
+            else
+                cp -fv libavcodec/libav{codec,format,util}.a .
+                cp -fv libswscale/libswscale.a libswscale.a
+            fi
         fi
 
         # Build 32-bit fork (all OSX versions less than 10.7)
-        if [ "$OSX_VER" -lt 1007 ]; then
-            # Prep for fork merging by arch specific rename
-            cp -fv libavcodec/libavcodec.a libavcodec-x86_64.a
-            cp -fv libavformat/libavformat.a libavformat-x86_64.a
-            cp -fv libavutil/libavutil.a libavutil-x86_64.a
-            cp -fv libswscale/libswscale.a libswscale-x86_64.a
-
+        if [ "$OSX_VER" -le 1006 ]; then
             $MAKE clean
             CFLAGS="-arch i386 -O3 $OSX_FLAGS" \
             LDFLAGS="-arch i386 -O3 $OSX_FLAGS" \
@@ -1482,7 +1472,7 @@ function build_ffmpeg {
             lipo -create libavformat-i386.a libavformat-ppc.a -output libavformat.a
             lipo -create libavutil-i386.a libavutil-ppc.a -output libavutil.a
             lipo -create libswscale-i386.a libswscale-ppc.a -output libswscale.a
-        elif [ "$OSX_VER" -lt 1007 ]; then
+        elif [ "$OSX_VER" -eq 1006 ]; then
             lipo -create libavcodec-x86_64.a libavcodec-i386.a -output libavcodec.a
             lipo -create libavformat-x86_64.a libavformat-i386.a -output libavformat.a
             lipo -create libavutil-x86_64.a libavutil-i386.a -output libavutil.a
