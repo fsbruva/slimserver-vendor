@@ -199,9 +199,6 @@ case "$OS" in
             exit
         fi
         MAKE_BIN=/usr/bin/gmake
-        CFLAGS_COMMON="-m64 $CFLAGS_COMMON"
-        CXXFLAGS_COMMON="-m64 $CXXFLAGS_COMMON"
-        LDFLAGS_COMMON="-m64 $LDFLAGS_COMMON"
     ;;
     Linux)
         #for i in libgif libz libgd ; do
