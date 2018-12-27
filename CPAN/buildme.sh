@@ -24,6 +24,11 @@
 #   gnu-binutils in path, e.g.
 #   PATH=/opt/gcc-7/bin:/usr/gnu/bin:$PATH
 #
+#   NOTE: Builds run best when using a i386 compiled perl (perl arch: *-64int)
+#         as an x86_64 perl (perl arch: *-64) will cause incompatibilities with
+#         some LMS plugins which bring their own pre-compiled libs in their
+#         arch paths, e.g. ShairTunes2W.
+#
 # Perl 5.12.4/5.14.1 note:
 #   You should build 5.12.4 using perlbrew and the following command. GCC's stack protector must be disabled
 #   so the binaries will not be dynamically linked to libssp.so which is not available on some distros.
@@ -165,13 +170,13 @@ case "$OS" in
         export CC=$GCC
         export CXX=$GXX
         export CPP=$GPP
-    
+
         if [ ! -x /usr/local/bin/gmake ]; then
             echo "ERROR: Please install GNU make (gmake)"
             exit
         fi
         MAKE_BIN=/usr/local/bin/gmake
-    
+
         #for i in libgif libz libgd ; do
 	    for i in libz ; do
 	        ldconfig -r | grep "${i}.so" > /dev/null #On FreeBSD flag -r should be used, there is no -p
@@ -241,7 +246,7 @@ case "$OS" in
         else
             echo "Unsupported Mac OS version."
             exit 1
-        fi    
+        fi
         CFLAGS_COMMON="$CFLAGS_COMMON $OSX_ARCH $OSX_FLAGS"
         CXXFLAGS_COMMON="$CXXFLAGS_COMMON $OSX_ARCH $OSX_FLAGS"
         LDFLAGS_COMMON="$LDFLAGS_COMMON $OSX_ARCH $OSX_FLAGS"
@@ -1038,8 +1043,9 @@ function build {
             build_bdb
 
             # build libmediascan
-            # XXX library does not link correctly on Darwin with libjpeg due to missing x86_64
-            # in libjpeg.dylib, Perl still links OK because it uses libjpeg.a
+            # Early OSX versions did not link libarry correctly libjpeg due to
+            # missing x86_64 in libjpeg.dylib, Perl linked OK because it used libjpeg.a
+            # Correct linking confirmed with OSX 10.10 and up.
             tar_wrapper zxf libmediascan-0.3.tar.gz
             cd libmediascan-0.3
             . ../update-config.sh
@@ -1079,8 +1085,7 @@ function build {
 
             if [ $PERL_BIN ]; then
                 export PERL5LIB=$PERL_BASE/lib/perl5
-	
-                $PERL_BIN Makefile.PL $MSOPTS INSTALL_BASE=$PERL_BASE 
+                $PERL_BIN Makefile.PL $MSOPTS INSTALL_BASE=$PERL_BASE
                 $MAKE
                 if [ $? != 0 ]; then
                     echo "make failed, aborting"
@@ -1290,7 +1295,7 @@ function build_libpng {
     CPPFLAGS="$CFLAGS_COMMON -O3 -DFA_XTRA" \
     LDFLAGS="$LDFLAGS_COMMON -O3" \
         ./configure -q --prefix=$BUILD \
-        --disable-dependency-tracking 
+        --disable-dependency-tracking
     $MAKE && $MAKE check
     if [ $? != 0 ]; then
         echo "make failed"
@@ -1298,7 +1303,7 @@ function build_libpng {
     fi
     $MAKE install
     cd ..
-    
+
     rm -rf $LIBPNG_PREFIX
 }
 
@@ -1315,7 +1320,7 @@ function build_giflib {
             if [ $GIF_VERSION -ge 50104 ]; then
                 return
             fi
-        fi 
+        fi
     fi
 
     # build giflib
@@ -1334,7 +1339,7 @@ function build_giflib {
     fi
     $MAKE install
     cd ..
-    
+
     rm -rf $GIFLIB_PREFIX
 }
 
@@ -1358,7 +1363,7 @@ function build_ffmpeg {
     tar_wrapper jxf $FFMPEG_PREFIX.tar.bz2
     cd $FFMPEG_PREFIX
     . ../update-config.sh
-    
+
     echo "Configuring FFmpeg..."
 
     # x86: Disable all but the lowend MMX ASM
@@ -1388,14 +1393,10 @@ function build_ffmpeg {
         --enable-demuxer=matroska --enable-demuxer=mov --enable-demuxer=mpegps --enable-demuxer=mpegts --enable-demuxer=mpegvideo \
         --enable-protocol=file --cc=$GCC --cxx=$GXX"
 
-    if [ $FFMPEG_VER_TO_BUILD -lt 400 ]; then
-        FFOPTS="FFOPTS --disable-ffserver"
-    fi
-
     if [ "$MACHINE" = "padre" ]; then
         FFOPTS="$FFOPTS --arch=sparc"
     fi
-  
+
     # ASM doesn't work right on x86_64
     # XXX test --arch options on Linux
     if [[ "$ARCH" =~ ^(amd64-freebsd|x86_64-linux|i86pc-solaris).*$ ]]; then
@@ -1545,7 +1546,7 @@ function build_bdb {
     fi
     $MAKE install
     cd ../..
-    
+
     rm -rf $DB_PREFIX
 }
 
