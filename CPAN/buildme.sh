@@ -245,7 +245,7 @@ esac
 # Export the selected MAKE value
 export MAKE=$MAKE_BIN
 
-for i in autoreconf $GCC $GXX $MAKE nasm rsync ; do
+for i in $GCC $GXX $MAKE nasm rsync ; do
     if ! [ -x "$(command -v $i)" ] ; then
         echo "$i not found - please install it"
         exit 1
@@ -1043,7 +1043,6 @@ function build {
             tar_wrapper zxf libmediascan-0.3.tar.gz
             cd libmediascan-0.3
             . ../update-config.sh
-            autoreconf -fi
 
             CFLAGS="-I$BUILD/include $CFLAGS_COMMON $OSX_ARCH $OSX_FLAGS -O3" \
             LDFLAGS="-L$BUILD/lib $LDFLAGS_COMMON $OSX_ARCH $OSX_FLAGS -O3" \
@@ -1150,7 +1149,6 @@ function build_libjpeg {
             patch -p0 < ../libjpeg-turbo-jmorecfg.h.patch
 
             # Build 64-bit fork
-            autoreconf -fiv
             CFLAGS="-O3 $OSX_FLAGS" \
             CXXFLAGS="-O3 $OSX_FLAGS" \
             LDFLAGS="$OSX_FLAGS" \
@@ -1237,7 +1235,6 @@ function build_libjpeg {
         # Disable features we don't need
         patch -p0 < ../libjpeg-turbo-jmorecfg.h.patch
 
-        autoreconf -fi
         CFLAGS="$CFLAGS_COMMON $OSX_ARCH $OSX_FLAGS" CXXFLAGS="$CXXFLAGS_COMMON $OSX_ARCH $OSX_FLAGS" LDFLAGS="$LDFLAGS_COMMON $OSX_ARCH $OSX_FLAGS" \
             ./configure -q --prefix=$BUILD --disable-dependency-tracking
         $MAKE
