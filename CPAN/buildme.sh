@@ -108,17 +108,11 @@ else
    GXX=g++
 fi
 
-if [ "$OS" = "SunOS" ]; then
-    export CFLAGS_COMMON="-m64 -w -fPIC"
-    export CXXFLAGS_COMMON="-m64 -w -fPIC"
-    export LDFLAGS_COMMON="-m64 -w -fPIC"
-else
-    export CFLAGS_COMMON="-w -fPIC"
-    export CXXFLAGS_COMMON="-w -fPIC"
-    export LDFLAGS_COMMON="-w -fPIC"
-fi
-
 # Set default values prior to potential overwrite
+CFLAGS_COMMON="-w -fPIC"
+CXXFLAGS_COMMON="-w -fPIC"
+LDFLAGS_COMMON="-w -fPIC"
+
 # Support a newer make if available, needed on ReadyNAS
 if [ -x /usr/local/bin/make ]; then
     MAKE_BIN=/usr/local/bin/make
@@ -200,6 +194,9 @@ case "$OS" in
             exit
         fi
         MAKE_BIN=/usr/bin/gmake
+        CFLAGS_COMMON="-m64 $CFLAGS_COMMON"
+        CXXFLAGS_COMMON="-m64 $CXXFLAGS_COMMON"
+        LDFLAGS_COMMON="-m64 $LDFLAGS_COMMON"
     ;;
     Linux)
         #for i in libgif libz libgd ; do
@@ -245,11 +242,18 @@ case "$OS" in
             echo "Unsupported Mac OS version."
             exit 1
         fi    
+        CFLAGS_COMMON="$CFLAGS_COMMON $OSX_ARCH $OSX_FLAGS"
+        CXXFLAGS_COMMON="$CXXFLAGS_COMMON $OSX_ARCH $OSX_FLAGS"
+        LDFLAGS_COMMON="$LDFLAGS_COMMON $OSX_ARCH $OSX_FLAGS"
     ;;
 esac
 
 # Export the selected MAKE value
 export MAKE=$MAKE_BIN
+export CFLAGS_COMMON=$CFLAGS_COMMON
+export CXXFLAGS_COMMON=$CXXFLAGS_COMMON
+export LDFLAGS_COMMON=$LDFLAGS_COMMON
+
 
 for i in $GCC $GXX $MAKE nasm rsync ; do
     if ! [ -x "$(command -v $i)" ] ; then
@@ -663,7 +667,7 @@ function build {
                 patch -p0 < ../../icu58_patches/digitlst.cpp.patch
                 . ../../update-config.sh
                 if [ "$OS" = 'Darwin' ]; then
-                    ICUFLAGS="$OSX_ARCH $OSX_FLAGS -DU_USING_ICU_NAMESPACE=0 -DU_CHARSET_IS_UTF8=1" # faster code for native UTF-8 systems
+                    ICUFLAGS="-DU_USING_ICU_NAMESPACE=0 -DU_CHARSET_IS_UTF8=1" # faster code for native UTF-8 systems
                     ICUOS="MacOSX"
                 elif [ "$OS" = 'Linux' ]; then
                     ICUFLAGS="-DU_USING_ICU_NAMESPACE=0"
@@ -677,7 +681,7 @@ function build {
                     for i in ../../icu58_patches/freebsd/patch-*;
                         do patch -p0 < $i; done
                 fi
-                CFLAGS="$CFLAGS_COMMON $ICUFLAGS" CXXFLAGS="$CXXFLAGS_COMMON $ICUFLAGS" LDFLAGS="$LDFLAGS_COMMON $OSX_ARCH $OSX_FLAGS" \
+                CFLAGS="$CFLAGS_COMMON $ICUFLAGS" CXXFLAGS="$CXXFLAGS_COMMON $ICUFLAGS" LDFLAGS="$LDFLAGS_COMMON" \
                     ./runConfigureICU $ICUOS --prefix=$BUILD --enable-static --with-data-packaging=archive
                 $MAKE
                 if [ $? != 0 ]; then
@@ -913,8 +917,8 @@ function build {
             tar_wrapper jxf mysql-5.1.37.tar.bz2
             cd mysql-5.1.37
             . ../update-config.sh
-            CFLAGS="-O3 -fno-omit-frame-pointer $CFLAGS_COMMON $OSX_ARCH $OSX_FLAGS" \
-            CXXFLAGS="-O3 -fno-omit-frame-pointer -felide-constructors -fno-exceptions -fno-rtti $CXXFLAGS_COMMON $OSX_ARCH $OSX_FLAGS" \
+            CFLAGS="-O3 -fno-omit-frame-pointer $CFLAGS_COMMON" \
+            CXXFLAGS="-O3 -fno-omit-frame-pointer -felide-constructors -fno-exceptions -fno-rtti $CXXFLAGS_COMMON" \
                 ./configure --prefix=$BUILD \
                 --disable-dependency-tracking \
                 --enable-thread-safe-client \
@@ -946,8 +950,8 @@ function build {
             cd expat-2.0.1/conftools
             . ../../update-config.sh
             cd ..
-            CFLAGS="$CFLAGS_COMMON $OSX_ARCH $OSX_FLAGS" \
-            LDFLAGS="$LDFLAGS_COMMON $OSX_ARCH $OSX_FLAGS" \
+            CFLAGS="$CFLAGS_COMMON" \
+            LDFLAGS="$LDFLAGS_COMMON" \
                 ./configure --prefix=$BUILD \
                 --disable-dependency-tracking
             $MAKE
@@ -992,8 +996,8 @@ function build {
             # libfreetype.a size (i386/x86_64 universal binary):
             #   1634288 (default)
             #    461984 (with custom ftoption.h/modules.cfg)
-            CFLAGS="$CFLAGS_COMMON $OSX_ARCH $OSX_FLAGS" \
-            LDFLAGS="$LDFLAGS_COMMON $OSX_ARCH $OSX_FLAGS" \
+            CFLAGS="$CFLAGS_COMMON" \
+            LDFLAGS="$LDFLAGS_COMMON" \
                 ./configure --prefix=$BUILD
             $MAKE # needed for FreeBSD to use gmake
             if [ $? != 0 ]; then
@@ -1040,9 +1044,9 @@ function build {
             cd libmediascan-0.3
             . ../update-config.sh
 
-            CFLAGS="-I$BUILD/include $CFLAGS_COMMON $OSX_ARCH $OSX_FLAGS -O3" \
-            LDFLAGS="-L$BUILD/lib $LDFLAGS_COMMON $OSX_ARCH $OSX_FLAGS -O3" \
-            OBJCFLAGS="-L$BUILD/lib $CFLAGS_COMMON $OSX_ARCH $OSX_FLAGS -O3" \
+            CFLAGS="-I$BUILD/include $CFLAGS_COMMON -O3" \
+            LDFLAGS="-L$BUILD/lib $LDFLAGS_COMMON -O3" \
+            OBJCFLAGS="-L$BUILD/lib $CFLAGS_COMMON -O3" \
                 ./configure -q --prefix=$BUILD --with-bdb=$BUILD --disable-shared --disable-dependency-tracking
             $MAKE
             if [ $? != 0 ]; then
@@ -1110,8 +1114,8 @@ function build_libexif {
     cd libexif-0.6.20
     . ../update-config.sh
 
-    CFLAGS="$CFLAGS_COMMON $OSX_ARCH $OSX_FLAGS -O3" \
-    LDFLAGS="$LDFLAGS_COMMON $OSX_ARCH $OSX_FLAGS -O3" \
+    CFLAGS="$CFLAGS_COMMON -O3" \
+    LDFLAGS="$LDFLAGS_COMMON -O3" \
         ./configure -q --prefix=$BUILD \
         --disable-dependency-tracking
     $MAKE
@@ -1231,7 +1235,7 @@ function build_libjpeg {
         # Disable features we don't need
         patch -p0 < ../libjpeg-turbo-jmorecfg.h.patch
 
-        CFLAGS="$CFLAGS_COMMON $OSX_ARCH $OSX_FLAGS" CXXFLAGS="$CXXFLAGS_COMMON $OSX_ARCH $OSX_FLAGS" LDFLAGS="$LDFLAGS_COMMON $OSX_ARCH $OSX_FLAGS" \
+        CFLAGS="$CFLAGS_COMMON" CXXFLAGS="$CXXFLAGS_COMMON" LDFLAGS="$LDFLAGS_COMMON" \
             ./configure -q --prefix=$BUILD --disable-dependency-tracking
         $MAKE
         if [ $? != 0 ]; then
@@ -1250,8 +1254,8 @@ function build_libjpeg {
         # Disable features we don't need
         cp -fv ../libjpeg-jmorecfg.h jmorecfg.h
 
-        CFLAGS="$CFLAGS_COMMON $OSX_ARCH $OSX_FLAGS -O3" \
-        LDFLAGS="$LDFLAGS_COMMON $OSX_ARCH $OSX_FLAGS -O3" \
+        CFLAGS="$CFLAGS_COMMON -O3" \
+        LDFLAGS="$LDFLAGS_COMMON -O3" \
             ./configure -q --prefix=$BUILD \
             --disable-dependency-tracking
         $MAKE
@@ -1282,9 +1286,9 @@ function build_libpng {
     cp -fv ../libpng-pngusr.dfa pngusr.dfa
     . ../update-config.sh
 
-    CFLAGS="$CFLAGS_COMMON $OSX_ARCH $OSX_FLAGS -O3" \
-    CPPFLAGS="$CFLAGS_COMMON $OSX_ARCH $OSX_FLAGS -O3 -DFA_XTRA" \
-    LDFLAGS="$LDFLAGS_COMMON $OSX_ARCH $OSX_FLAGS -O3" \
+    CFLAGS="$CFLAGS_COMMON -O3" \
+    CPPFLAGS="$CFLAGS_COMMON -O3 -DFA_XTRA" \
+    LDFLAGS="$LDFLAGS_COMMON -O3" \
         ./configure -q --prefix=$BUILD \
         --disable-dependency-tracking 
     $MAKE && $MAKE check
@@ -1319,8 +1323,8 @@ function build_giflib {
     tar_wrapper zxf $GIFLIB_PREFIX.tar.gz
     cd $GIFLIB_PREFIX
     . ../update-config.sh
-    CFLAGS="$CFLAGS_COMMON $OSX_ARCH $OSX_FLAGS -O3" \
-    LDFLAGS="$LDFLAGS_COMMON $OSX_ARCH $OSX_FLAGS -O3" \
+    CFLAGS="$CFLAGS_COMMON -O3" \
+    LDFLAGS="$LDFLAGS_COMMON -O3" \
         ./configure -q --prefix=$BUILD \
         --disable-dependency-tracking
     $MAKE
@@ -1529,8 +1533,8 @@ function build_bdb {
     . ../../update-config.sh
     cd ../build_unix
 
-    CFLAGS="$CFLAGS_COMMON $OSX_ARCH $OSX_FLAGS -O3" \
-    LDFLAGS="$CFLAGS_COMMON $OSX_ARCH $OSX_FLAGS -O3 " \
+    CFLAGS="$CFLAGS_COMMON -O3" \
+    LDFLAGS="$CFLAGS_COMMON -O3 " \
         ../dist/configure -q --prefix=$BUILD $MUTEX \
         --with-cryptography=no -disable-hash --disable-queue --disable-replication --disable-statistics --disable-verify \
         --disable-dependency-tracking --disable-shared
