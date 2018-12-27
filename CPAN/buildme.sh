@@ -269,13 +269,13 @@ CC_IS_CLANG=false
 CC_IS_GCC=false
 # Heavy wizardry begins here
 # This uses bash globbing for the If statement
-if [[ "$CC_TYPE" =~ "clang" ]]; then
+if [[ "$CC_TYPE" =~ ^.*clang.*$ ]]; then
     CLANG_MAJOR=`echo "#include <iostream>" | "$GXX" -xc++ -dM -E - | grep '#define __clang_major' | sed 's/.*__\ //g'`
     CLANG_MINOR=`echo "#include <iostream>" | "$GXX" -xc++ -dM -E - | grep '#define __clang_minor' | sed 's/.*__\ //g'`
     CLANG_PATCH=`echo "#include <iostream>" | "$GXX" -xc++ -dM -E - | grep '#define __clang_patchlevel' | sed 's/.*__\ //g'`
     CC_VERSION=`echo "$CLANG_MAJOR"."$CLANG_MINOR"."$CLANG_PATCH" | sed "s#\ *)\ *##g" | sed -e 's/\.\([0-9][0-9]\)/\1/g' -e 's/\.\([0-9]\)/0\1/g' -e 's/^[0-9]\{3,4\}$/&00/'`
     CC_IS_CLANG=true
-elif [[ "$CC_TYPE" =~ "gcc" || "$CC_TYPE" =~ "GCC" ]]; then
+elif [[ "$CC_TYPE" =~ ^.*gcc.*$ || "$CC_TYPE" =~ ^.*GCC.*$ ]]; then
     CC_IS_GCC=true
     CC_VERSION=`$GCC -dumpfullversion -dumpversion | sed "s#\ *)\ *##g" | sed -e 's/\.\([0-9][0-9]\)/\1/g' -e 's/\.\([0-9]\)/0\1/g' -e 's/^[0-9]\{3,4\}$/&00/'`
 else
@@ -464,7 +464,7 @@ if [ "$PERL_BIN" = "" -o "$CUSTOM_PERL" != "" ]; then
         PERL_BIN=$CUSTOM_PERL
         PERL_VERSION=`$CUSTOM_PERL -MConfig -le '$Config{version} =~ /(\d+.\d+)\./; print $1'`
     fi
-    if [[ "$PERL_VERSION" =~ "5." ]]; then
+    if [[ "$PERL_VERSION" =~ ^5\.[0-9]+$ ]]; then
         PERL_MINOR_VER=`echo "$PERL_VERSION" | sed 's/.*\.//g'`
     else
         echo "Failed to find supported Perl version for '$PERL_BIN'"
@@ -1135,8 +1135,8 @@ function build_libjpeg {
 
     # build libjpeg-turbo on x86 platforms
     TURBO_VER="libjpeg-turbo-1.5.3"
-    tar_wrapper zxf $TURBO_VER.tar.gz
     if [ "$OS" = "Darwin" ]; then
+    tar_wrapper zxf $TURBO_VER.tar.gz
         if [ "$OSX_VER" -ge 1006 ]; then
             # Build x86_64 versions of turbo - 64 bit OS was introduced in 10.6
             cd $TURBO_VER
@@ -1223,7 +1223,7 @@ function build_libjpeg {
         mv -fv libjpeg.a $BUILD/lib/libjpeg.a
         rm -fv libjpeg-x86_64.a libjpeg-i386.a libjpeg-ppc.a
 
-    elif [[ "$ARCH" =~ "i386-linux" || "$ARCH" =~ "x86_64-linux" || "$ARCH" =~ "i86pc-solaris*" || "$OS" = "FreeBSD" ]]; then
+    elif [[ "$ARCH" =~ ^(i386-linux|x86_64-linux|i86pc-solaris).*$ || "$OS" == "FreeBSD" ]]; then
         # build libjpeg-turbo
         tar_wrapper zxf $TURBO_VER.tar.gz
         cd $TURBO_VER
@@ -1394,11 +1394,11 @@ function build_ffmpeg {
   
     # ASM doesn't work right on x86_64
     # XXX test --arch options on Linux
-    if [[ "$ARCH" =~ "x86_64-linux" || "$ARCH" =~ "amd64-freebsd" || "$ARCH" =~ "i86pc-solaris*" ]]; then
+    if [[ "$ARCH" =~ ^(amd64-freebsd|x86_64-linux|i86pc-solaris).*$ ]]; then
         FFOPTS="$FFOPTS --disable-mmx"
     fi
     # FreeBSD amd64 needs arch option
-    if [[ "$ARCH" =~ "amd64-freebsd" ]]; then
+    if [[ "$ARCH" =~ ^amd64-freebsd.*$ ]]; then
         FFOPTS="$FFOPTS --arch=x86"
         # FFMPEG has known issues with GCC 4.2. See: https://trac.ffmpeg.org/ticket/3970
         if [[ "$CC_IS_GCC" == true && "$CC_VERSION" -ge 40200 && "$CC_VERSION" -lt 40300 ]]; then
