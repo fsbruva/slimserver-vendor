@@ -492,6 +492,14 @@ echo "Building with Perl 5.$PERL_MINOR_VER at $PERL_BIN"
 PERL_BASE=$BUILD/5.$PERL_MINOR_VER
 PERL_ARCH=$BUILD/arch/5.$PERL_MINOR_VER
 
+# On Solaris, both i386 and x64 version of Perl exist.
+# If it is i386, and Perl uses 64 bit integers, then an additional flag is needed.
+if [[ "$OS" = "SunOS" && "$ARCH" =~ ^.*-64int$ ]]; then
+    export CFLAGS_COMMON="-m64 $CFLAGS_COMMON"
+    export CXXFLAGS_COMMON="-m64 $CXXFLAGS_COMMON"
+    export LDFLAGS_COMMON="-m64 $LDFLAGS_COMMON"
+fi
+
 #  Clean up
 if [ $CLEAN -eq 1 ]; then
     rm -rf $BUILD/arch
