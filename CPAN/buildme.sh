@@ -656,8 +656,6 @@ function build {
         DBI)
             if [ $PERL_MINOR_VER -ge 18 ]; then
                 build_module DBI-1.628
-            elif [ $PERL_MINOR_VER -eq 8 ]; then
-                build_module DBI-1.616 "" 0
             else
                 build_module DBI-1.616
             fi
@@ -789,14 +787,16 @@ function build {
             ;;
 
         Encode::Detect)
-            if [[ "$OS" == "FreeBSD" && `sysctl -n security.jail.jailed` == 1 && $PERL_MINOR_VER -le 10 ]]; then
-                # Tests fail in jails with old Perl
-                build_module Data-Dump-1.19 "" 0
-            else
+# This will be deleted once it is tested in old jails.
+#            if [[ "$OS" == "FreeBSD" && `sysctl -n security.jail.jailed` == 1 && $PERL_MINOR_VER -le 10 ]]; then
+#                # Tests fail in jails with old Perl
+#                build_module Data-Dump-1.19 "" 0
+#                build_module Data-Dump-1.19
+#            else
                 build_module Data-Dump-1.19
-            fi
+#            fi
             build_module ExtUtils-CBuilder-0.260301
-            build_module Module-Build-0.35 "" 0
+            build_module Module-Build-0.4224
             build_module Encode-Detect-1.00
             ;;
 
@@ -810,7 +810,6 @@ function build {
             build_libpng
             build_giflib
 
-            build_module Test-NoWarnings-1.02 "" 0
             build_module Image-Scale-0.14 "--with-jpeg-includes="$BUILD/include" --with-jpeg-static \
                     --with-png-includes="$BUILD/include" --with-png-static \
                     --with-gif-includes="$BUILD/include" --with-gif-static"
@@ -821,7 +820,8 @@ function build {
                 build_module common-sense-2.0
 
                 # Don't use the darwin hints file, it breaks if compiled on Snow Leopard with 10.5 (!?)
-                build_module IO-AIO-3.71 "" 0 $CLEAN 0
+                # Old command: build_module IO-AIO-3.71 "" 0 $CLEAN 0
+                build_module IO-AIO-4.6
             fi
             ;;
 
@@ -835,7 +835,6 @@ function build {
             ;;
 
         IO::Socket::SSL)
-            build_module Test-NoWarnings-1.02 "" 0
             build_module Net-IDN-Encode-2.400
 
             tar_wrapper zxf Net-SSLeay-1.85.tar.gz
@@ -877,7 +876,7 @@ function build {
 
         Mac::FSEvents)
             if [ "$OS" = 'Darwin' ]; then
-                build_module Mac-FSEvents-0.04 "" 0
+                build_module Mac-FSEvents-0.14
             fi
             ;;
 
@@ -888,19 +887,12 @@ function build {
         YAML::LibYAML)
             # Needed because LibYAML 0.35 used . in @INC (not permitted in Perl 5.26)
             # Needed for Debian's Perl 5.24 as well, for the same reason
-            if [ $PERL_MINOR_VER -ge 24 ]; then
-                build_module YAML-LibYAML-0.65
-            elif [ $PERL_MINOR_VER -ge 16 ]; then
-                build_module YAML-LibYAML-0.35 "" 0
-            else
-                build_module YAML-LibYAML-0.35
-            fi
+            build_module YAML-LibYAML-0.65
             ;;
 
         Audio::Scan)
-            build_module Sub-Uplevel-0.22 "" 0
-            build_module Tree-DAG_Node-1.06 "" 0
-            build_module Test-Warn-0.23 "" 0
+            build_module Sub-Uplevel-0.2800
+            build_module Tree-DAG_Node-1.06
             build_module Audio-Scan-1.02
             ;;
 
@@ -1068,9 +1060,8 @@ function build {
             cd ..
 
             # build Media::Scan
-            build_module Sub-Uplevel-0.22 "" 0
-            build_module Tree-DAG_Node-1.06 "" 0
-            build_module Test-Warn-0.23 "" 0
+            build_module Sub-Uplevel-0.2800
+            build_module Tree-DAG_Node-1.06
             cd libmediascan-0.3/bindings/perl
             # LMS's hints file is OK and also has custom frameworks added
 
@@ -1554,6 +1545,10 @@ function build_bdb {
 
     rm -rf $DB_PREFIX
 }
+
+# Lots of Perl versions need modern Tests. Easier to build it once,
+# regardless of the requested modules.
+build_module Test-Simple-1.302141
 
 # Build a single module if requested, or all
 if [ $1 ]; then
