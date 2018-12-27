@@ -41,7 +41,6 @@
 RUN_TESTS=1
 USE_HINTS=1
 CLEAN=1
-FLAGS="-w -fPIC"
 
 function usage {
     cat <<EOF
@@ -108,9 +107,16 @@ if [[ ! -z "$CXX" ]]; then
 else
    GXX=g++
 fi
-export CFLAGS_COMMON="-fPIC"
-export CXXFLAGS_COMMON="-fPIC"
-export LDFLAGS_COMMON="-fPIC"
+
+if [ "$OS" = "SunOS" ]; then
+    export CFLAGS_COMMON="-m64 -w -fPIC"
+    export CXXFLAGS_COMMON="-m64 -w -fPIC"
+    export LDFLAGS_COMMON="-m64 -w -fPIC"
+else
+    export CFLAGS_COMMON="-w -fPIC"
+    export CXXFLAGS_COMMON="-w -fPIC"
+    export LDFLAGS_COMMON="-w -fPIC"
+fi
 
 # Set default values prior to potential overwrite
 # Support a newer make if available, needed on ReadyNAS
@@ -663,7 +669,7 @@ function build {
                     ICUFLAGS="-DU_USING_ICU_NAMESPACE=0"
                     ICUOS="Linux"
                 elif [ "$OS" = 'SunOS' ]; then
-                    ICUFLAGS="-D_XPG6 -DU_USING_ICU_NAMESPACE=0 -DU_CHARSET_IS_UTF8=1"
+                    ICUFLAGS="-m64 -D_XPG6 -DU_USING_ICU_NAMESPACE=0 -DU_CHARSET_IS_UTF8=1"
                     ICUOS="Solaris/GCC"
                 elif [ "$OS" = 'FreeBSD' ]; then
                     ICUFLAGS="-DU_USING_ICU_NAMESPACE=0"
@@ -1217,7 +1223,7 @@ function build_libjpeg {
         mv -fv libjpeg.a $BUILD/lib/libjpeg.a
         rm -fv libjpeg-x86_64.a libjpeg-i386.a libjpeg-ppc.a
 
-    elif [[ "$ARCH" =~ "i386-linux" || "$ARCH" =~ "x86_64-linux" || "$ARCH" =~ "i86pc-solaris" || "$OS" = "FreeBSD" ]]; then
+    elif [[ "$ARCH" =~ "i386-linux" || "$ARCH" =~ "x86_64-linux" || "$ARCH" =~ "i86pc-solaris*" || "$OS" = "FreeBSD" ]]; then
         # build libjpeg-turbo
         tar_wrapper zxf $TURBO_VER.tar.gz
         cd $TURBO_VER
@@ -1388,7 +1394,7 @@ function build_ffmpeg {
   
     # ASM doesn't work right on x86_64
     # XXX test --arch options on Linux
-    if [[ "$ARCH" =~ "x86_64-linux" || "$ARCH" =~ "amd64-freebsd" || "$ARCH" =~ "i86pc-solaris" ]]; then
+    if [[ "$ARCH" =~ "x86_64-linux" || "$ARCH" =~ "amd64-freebsd" || "$ARCH" =~ "i86pc-solaris*" ]]; then
         FFOPTS="$FFOPTS --disable-mmx"
     fi
     # FreeBSD amd64 needs arch option
