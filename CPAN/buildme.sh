@@ -108,15 +108,9 @@ else
    GXX=g++
 fi
 
-if [ "$OS" = "SunOS" ]; then
-    export CFLAGS_COMMON="-m64 -w -fPIC"
-    export CXXFLAGS_COMMON="-m64 -w -fPIC"
-    export LDFLAGS_COMMON="-m64 -w -fPIC"
-else
-    export CFLAGS_COMMON="-w -fPIC"
-    export CXXFLAGS_COMMON="-w -fPIC"
-    export LDFLAGS_COMMON="-w -fPIC"
-fi
+export CFLAGS_COMMON="-w -fPIC"
+export CXXFLAGS_COMMON="-w -fPIC"
+export LDFLAGS_COMMON="-w -fPIC"
 
 # Set default values prior to potential overwrite
 # Support a newer make if available, needed on ReadyNAS
@@ -483,6 +477,12 @@ echo "Building with Perl 5.$PERL_MINOR_VER at $PERL_BIN"
 PERL_BASE=$BUILD/5.$PERL_MINOR_VER
 PERL_ARCH=$BUILD/arch/5.$PERL_MINOR_VER
 
+if [[ "$OS" = "SunOS" && "$ARCH" = "*-64int" ]]; then
+    export CFLAGS_COMMON="-m64 -w -fPIC"
+    export CXXFLAGS_COMMON="-m64 -w -fPIC"
+    export LDFLAGS_COMMON="-m64 -w -fPIC"
+fi
+
 #  Clean up
 if [ $CLEAN -eq 1 ]; then
     rm -rf $BUILD/arch
@@ -669,8 +669,12 @@ function build {
                     ICUFLAGS="-DU_USING_ICU_NAMESPACE=0"
                     ICUOS="Linux"
                 elif [ "$OS" = 'SunOS' ]; then
-                    ICUFLAGS="-m64 -D_XPG6 -DU_USING_ICU_NAMESPACE=0 -DU_CHARSET_IS_UTF8=1"
                     ICUOS="Solaris/GCC"
+                    if [[ "$ARCH" = "*-64int" ]]; then
+                        ICUFLAGS="-D_XPG6 -DU_USING_ICU_NAMESPACE=0 -DU_CHARSET_IS_UTF8=1"
+                    elif [[ "$ARCH" = "*-64" ]]; then
+                        ICUFLAGS="-m64 -D_XPG6 -DU_USING_ICU_NAMESPACE=0 -DU_CHARSET_IS_UTF8=1"
+                    fi
                 elif [ "$OS" = 'FreeBSD' ]; then
                     ICUFLAGS="-DU_USING_ICU_NAMESPACE=0"
                     ICUOS="FreeBSD"
