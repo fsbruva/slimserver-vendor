@@ -24,6 +24,11 @@
 #   gnu-binutils in path, e.g.
 #   PATH=/opt/gcc-7/bin:/usr/gnu/bin:$PATH
 #
+#   NOTE: Builds run best when using a i386 compiled perl (perl arch: *-64int) 
+#         as an x86_64 perl (perl arch: *-64) will cause incompatibilities with 
+#         some LMS plugins which bring their own pre-compiled libs in their 
+#         arch paths, e.g. ShairTunes2W. 
+#
 # Perl 5.12.4/5.14.1 note:
 #   You should build 5.12.4 using perlbrew and the following command. GCC's stack protector must be disabled
 #   so the binaries will not be dynamically linked to libssp.so which is not available on some distros.
