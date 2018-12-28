@@ -893,6 +893,7 @@ function build {
         Audio::Scan)
             build_module Sub-Uplevel-0.2800
             build_module Tree-DAG_Node-1.06
+            build_module Test-Warn-0.36
             build_module Audio-Scan-1.02
             ;;
 
@@ -1062,6 +1063,7 @@ function build {
             # build Media::Scan
             build_module Sub-Uplevel-0.2800
             build_module Tree-DAG_Node-1.06
+            build_module Test-Warn-0.36
             cd libmediascan-0.3/bindings/perl
             # LMS's hints file is OK and also has custom frameworks added
 
