@@ -648,7 +648,7 @@ function build {
             ;;
 
         Compress::Raw::Zlib)
-            if [ $PERL_MINOR_VER -eq 8 -o $PERL_MINOR_VER -eq 10 ]; then
+            if [ $PERL_MINOR_VER -ge 10 ]; then
 	            build_module Compress-Raw-Zlib-2.033
             fi
             ;;
@@ -657,16 +657,15 @@ function build {
             if [ $PERL_MINOR_VER -ge 18 ]; then
                 build_module DBI-1.628
             else
+                # Old Perl is missing some test methods used by DBI and DBD::SQLite
+                if [ $PERL_MINOR_VER -eq 8 ] ; then
+                    build_module Test-Simple-1.302141
+                fi
                 build_module DBI-1.616
             fi
             ;;
 
         DBD::SQLite)
-            # Old Perl is missing some test methods used by DBI and DBD::SQLite
-            if [ $PERL_MINOR_VER -eq 8 ] ; then
-                build_module Test-Simple-1.302141
-            fi
-
             # Build DBI before DBD::SQLite so that DBD::SQLite is built
             # against _our_ DBI, not one already present on the system.
             build DBI
