@@ -514,7 +514,7 @@ function build {
             ;;
 
         Compress::Raw::Zlib)
-            if [ $PERL_MINOR_VER -ge 10 ]; then
+            if [ $PERL_MINOR_VER -le 10 ]; then
 	            build_module Compress-Raw-Zlib-2.033
             fi
             ;;
