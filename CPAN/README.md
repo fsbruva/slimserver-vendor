@@ -1,7 +1,7 @@
-#Building Perl binaries for Logitech Media Server
-#============================
-#(aka. SlimServer, SqueezeboxServer, SliMP3...)
-#--------
+Building Perl binaries for Logitech Media Server
+============================
+(aka. SlimServer, SqueezeboxServer, SliMP3...)
+--------
 
 In most cases it should be good enough to just run `./buildme.sh` from this folder.
 
@@ -32,22 +32,25 @@ On FreeBSD, FreeNAS, etc. make sure you have the following packages/ports instal
 * lang/perl5.X (substitute your preferred version for X)
 
 ### Preparation of a Illumos base system
+Builds are best done with custom compiled perl having gnu-binutils in path, e.g.
+```PATH=/opt/gcc-7/bin:/usr/gnu/bin:$PATH```
+
+**NOTE:** Builds run best when using a i386 compiled perl (perl arch: \*-64int)
+as an x86_64 perl (perl arch: \*-64) will cause incompatibilities with
+some LMS plugins which bring their own pre-compiled libs in their
+arch paths, e.g. ShairTunes2W.
+
 On OmniOS, etc. make sure you have the following packages installed:
 * developer/gcc7
 * developer/gnu-binutils
 * developer/nasm
 
-Builds are best done with custom compiled perl having gnu-binutils in path, e.g.
-```PATH=/opt/gcc-7/bin:/usr/gnu/bin:$PATH```
-**NOTE:** Builds run best when using a i386 compiled perl (perl arch: *-64int)
-as an x86_64 perl (perl arch: *-64) will cause incompatibilities with
-some LMS plugins which bring their own pre-compiled libs in their
-arch paths, e.g. ShairTunes2W.
+
 
 ## Overall Perl notes:
 You should build using perlbrew and the following command. GCC's stack protector must be disabled
 so the binaries will not be dynamically linked to libssp.so which is not available on some distros.
-NOTE: On 32-bit systems for 5.12 and higher, -D use64bitint should be used.
+NOTE: On 32-bit systems for 5.12 and higher, `-D use64bitint` should be used.
 
 ### Example command for 5.12.4 install on 32-bit system
 ```
@@ -55,7 +58,7 @@ perlbrew install perl-5.12.4 -D usethreads -D use64bitint -A ccflags=-fno-stack-
 ```
 
 ### Example command for 5.12.4 install on 64-bit native system
-````
+```
 perlbrew install perl-5.12.4 -D usethreads -A ccflags=-fno-stack-protector -A ldflags=-fno-stack-protector
 ```
 In addition, you should make sure that your Perl was compiled with the same family of compiler 
@@ -63,7 +66,7 @@ In addition, you should make sure that your Perl was compiled with the same fami
 signficant problems.
 
 ## Supported OS/Perl Combinations:
-#### Linux (Perl 5.8-26, both threade & non )
+#### Linux (Perl 5.8-26, both threaded & non )
   -  i386/x86_64 Linux
   -  ARM Linux
   -  PowerPC Linux
