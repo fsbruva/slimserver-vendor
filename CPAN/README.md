@@ -46,7 +46,6 @@ On OmniOS, etc. make sure you have the following packages installed:
 * developer/nasm
 
 
-
 ## Overall Perl notes:
 You should build using perlbrew and the following command. GCC's stack protector must be disabled
 so the binaries will not be dynamically linked to libssp.so which is not available on some distros.
