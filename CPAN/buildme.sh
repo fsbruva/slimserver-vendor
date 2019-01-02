@@ -109,12 +109,49 @@ else
     MAKE_BIN=/usr/bin/make
 fi
 
+# Try to use the version of Perl in PATH, or the CLI supplied
+if [ "$PERL_BIN" = "" -o "$CUSTOM_PERL" != "" ]; then
+    if [ "$CUSTOM_PERL" = "" ]; then
+        PERL_BIN=`which perl`
+        PERL_VERSION=`perl -MConfig -le '$Config{version} =~ /(\d+.\d+)\./; print $1'`
+    else
+        PERL_BIN=$CUSTOM_PERL
+        PERL_VERSION=`$CUSTOM_PERL -MConfig -le '$Config{version} =~ /(\d+.\d+)\./; print $1'`
+    fi
+    if [[ "$PERL_VERSION" =~ ^5\.[0-9]+$ ]]; then
+        PERL_MINOR_VER=`echo "$PERL_VERSION" | sed 's/.*\.//g'`
+    else
+        echo "Failed to find supported Perl version for '$PERL_BIN'"
+        exit
+    fi
+
+fi
+
+# We have found Perl, so get system arch, according to Perl
+RAW_ARCH=`$PERL_BIN -MConfig -le 'print $Config{archname}'`
+# Strip out extra -gnu on Linux for use within this build script
+ARCH=`echo $RAW_ARCH | sed 's/gnu-//' | sed 's/^i[3456]86-/i386-/' | sed 's/armv.*?-/arm-/' `
+
+echo "Building for $OS / $ARCH"
+echo "Building with Perl 5.$PERL_MINOR_VER at $PERL_BIN"
+
+# Build dirs
+BUILD=$PWD/build
+PERL_BASE=$BUILD/perl5x
+PERL_ARCH=$BUILD/arch/perl5x
+PERL_BASE=$BUILD/5.$PERL_MINOR_VER
+PERL_ARCH=$BUILD/arch/5.$PERL_MINOR_VER
+
 # This script uses the following precedence for FreeBSD:
 # 1. Environment values for CC/CXX/CPP (checks if $CC is already defined)
 # 2. Values defined in /etc/make.conf, or
 # 3. Stock build chain
 case "$OS" in
     FreeBSD)
+       # This script uses the following precedence for FreeBSD:
+       # 1. Environment values for CC/CXX/CPP (checks if $CC is already defined)
+       # 2. Values defined in /etc/make.conf, or
+       # 3. Stock build chain
         BSD_MAJOR_VER=`uname -r | sed 's/\..*//g'`
         BSD_MINOR_VER=`uname -r | sed 's/.*\.//g'`
         if [ -f "/etc/make.conf" ]; then
@@ -183,6 +220,13 @@ case "$OS" in
             exit
         fi
         MAKE_BIN=/usr/bin/gmake
+        # On Solaris, both i386 and x64 version of Perl exist.
+        # If it is i386, and Perl uses 64 bit integers, then an additional flag is needed.
+        if [[ "$ARCH" =~ ^.*-64int$ ]]; then
+        CFLAGS_COMMON="-m64 $CFLAGS_COMMON"
+        CXXFLAGS_COMMON="-m64 $CXXFLAGS_COMMON"
+        LDFLAGS_COMMON="-m64 $LDFLAGS_COMMON"
+        fi
     ;;
     Linux)
         #for i in libgif libz libgd ; do
@@ -247,6 +291,10 @@ for i in $GCC $GXX $MAKE nasm rsync ; do
         exit 1
     fi
 done
+
+if [ -n "$(find /usr/lib/ -maxdepth 1 -name '*libungif*' -print -quit)" ] ; then
+    echo "ON SOME PLATFORMS (Ubuntu/Debian at least) THE ABOVE LIBRARIES MAY NEED TO BE TEMPORARILY REMOVED TO ALLOW THE BUILD TO WORK"
+fi
 
 echo "Looks like your compiler is $GCC"
 $GCC --version
@@ -314,172 +362,10 @@ else
     GCC_LIBCPP=false
 fi
 
-if [ -n "$(find /usr/lib/ -maxdepth 1 -name '*libungif*' -print -quit)" ] ; then
-    echo "ON SOME PLATFORMS (Ubuntu/Debian at least) THE ABOVE LIBRARIES MAY NEED TO BE TEMPORARILY REMOVED TO ALLOW THE BUILD TO WORK"
-fi
-
 # Build dir
 BUILD=$PWD/build
 PERL_BASE=$BUILD/perl5x
 PERL_ARCH=$BUILD/arch/perl5x
-
-# Path to Perl 5.8.8
-if [ -x "/usr/bin/perl5.8.8" ]; then
-    PERL_58=/usr/bin/perl5.8.8
-elif [ -x "/usr/local/bin/perl5.8.8" ]; then
-    PERL_58=/usr/local/bin/perl5.8.8
-elif [ -x "$HOME/perl5/perlbrew/perls/perl-5.8.9/bin/perl5.8.9" ]; then
-    PERL_58=$HOME/perl5/perlbrew/perls/perl-5.8.9/bin/perl5.8.9
-elif [ -x "/usr/local/bin/perl5.8.9" ]; then # FreeBSD 7.2
-    PERL_58=/usr/local/bin/perl5.8.9
-fi
-
-if [ $PERL_58 ]; then
-    PERL_BIN=$PERL_58
-    PERL_MINOR_VER=8
-fi
-
-# Path to Perl 5.10.0
-if [ -x "/usr/bin/perl5.10.0" ]; then
-    PERL_510=/usr/bin/perl5.10.0
-elif [ -x "/usr/local/bin/perl5.10.0" ]; then
-    PERL_510=/usr/local/bin/perl5.10.0
-elif [ -x "/usr/local/bin/perl5.10.1" ]; then # FreeBSD 8.2
-    PERL_510=/usr/local/bin/perl5.10.1
-fi
-
-if [ $PERL_510 ]; then
-    PERL_BIN=$PERL_510
-    PERL_MINOR_VER=10
-fi
-
-# Path to Perl 5.12
-if [ "$OSX_VER" = "10.9" ]; then
-    echo "Ignoring Perl 5.12 - we want 5.16 on Mavericks"
-elif [ -x "/usr/bin/perl5.12.4" ]; then
-    PERL_512=/usr/bin/perl5.12.4
-elif [ -x "/usr/local/bin/perl5.12.4" ]; then
-    PERL_512=/usr/local/bin/perl5.12.4
-elif [ -x "/usr/local/bin/perl5.12.4" ]; then # Also FreeBSD 8.2
-    PERL_512=/usr/local/bin/perl5.12.4
-elif [ -x "$HOME/perl5/perlbrew/perls/perl-5.12.4/bin/perl5.12.4" ]; then
-    PERL_512=$HOME/perl5/perlbrew/perls/perl-5.12.4/bin/perl5.12.4
-elif [ -x "/usr/bin/perl5.12" ]; then
-    # OSX Lion uses this path
-    PERL_512=/usr/bin/perl5.12
-fi
-
-if [ $PERL_512 ]; then
-    PERL_BIN=$PERL_512
-    PERL_MINOR_VER=12
-fi
-
-# Path to Perl 5.14.1
-if [ -x "$HOME/perl5/perlbrew/perls/perl-5.14.1/bin/perl5.14.1" ]; then
-    PERL_514=$HOME/perl5/perlbrew/perls/perl-5.14.1/bin/perl5.14.1
-fi
-
-if [ $PERL_514 ]; then
-    PERL_BIN=$PERL_514
-    PERL_MINOR_VER=14
-fi
-
-# Path to Perl 5.16
-if [ "$OSX_VER" = "10.10" ]; then
-    echo "Ignoring Perl 5.16 - we want 5.18 on Yosemite"
-elif [ -x "/usr/bin/perl5.16" ]; then
-    PERL_516=/usr/bin/perl5.16
-elif [ -x "/usr/bin/perl5.16.3" ]; then
-    PERL_516=/usr/bin/perl5.16.3
-fi
-
-if [ $PERL_516 ]; then
-    PERL_BIN=$PERL_516
-    PERL_MINOR_VER=16
-fi
-
-# Path to Perl 5.18
-if [ -x "/usr/bin/perl5.18" ]; then
-    PERL_518=/usr/bin/perl5.18
-fi
-
-# defined on the command line - no detection yet
-if [ $PERL_518 ]; then
-    PERL_BIN=$PERL_518
-    PERL_MINOR_VER=18
-fi
-
-# defined on the command line - no detection yet
-if [ $PERL_520 ]; then
-    PERL_BIN=$PERL_520
-    PERL_MINOR_VER=20
-fi
-
-# Path to Perl 5.22
-if [ -x "/usr/bin/perl5.22.1" ]; then
-    PERL_522=/usr/bin/perl5.22.1
-fi
-
-if [ $PERL_522 ]; then
-    PERL_BIN=$PERL_522
-    PERL_MINOR_VER=22
-fi
-
-# Path to Perl 5.24
-if [ -x "/usr/bin/perl5.24.1" ]; then
-    PERL_524=/usr/bin/perl5.24.1
-fi
-
-if [ $PERL_524 ]; then
-    PERL_BIN=$PERL_524
-    PERL_MINOR_VER=24
-fi
-
-# Path to Perl 5.26
-if [ -x "/usr/bin/perl5.26.0" ]; then
-    PERL_526=/usr/bin/perl5.26.0
-fi
-
-if [ $PERL_526 ]; then
-    PERL_BIN=$PERL_526
-    PERL_MINOR_VER=26
-fi
-
-# try to use default perl version
-if [ "$PERL_BIN" = "" -o "$CUSTOM_PERL" != "" ]; then
-    if [ "$CUSTOM_PERL" = "" ]; then
-        PERL_BIN=`which perl`
-        PERL_VERSION=`perl -MConfig -le '$Config{version} =~ /(\d+.\d+)\./; print $1'`
-    else
-        PERL_BIN=$CUSTOM_PERL
-        PERL_VERSION=`$CUSTOM_PERL -MConfig -le '$Config{version} =~ /(\d+.\d+)\./; print $1'`
-    fi
-    if [[ "$PERL_VERSION" =~ ^5\.[0-9]+$ ]]; then
-        PERL_MINOR_VER=`echo "$PERL_VERSION" | sed 's/.*\.//g'`
-    else
-        echo "Failed to find supported Perl version for '$PERL_BIN'"
-        exit
-    fi
-
-fi
-
-# We have found Perl, so get system arch, according to Perl
-RAW_ARCH=`$PERL_BIN -MConfig -le 'print $Config{archname}'`
-# Strip out extra -gnu on Linux for use within this build script
-ARCH=`echo $RAW_ARCH | sed 's/gnu-//' | sed 's/^i[3456]86-/i386-/' | sed 's/armv.*?-/arm-/' `
-
-echo "Building for $OS / $ARCH"
-echo "Building with Perl 5.$PERL_MINOR_VER at $PERL_BIN"
-PERL_BASE=$BUILD/5.$PERL_MINOR_VER
-PERL_ARCH=$BUILD/arch/5.$PERL_MINOR_VER
-
-# On Solaris, both i386 and x64 version of Perl exist.
-# If it is i386, and Perl uses 64 bit integers, then an additional flag is needed.
-if [[ "$OS" = "SunOS" && "$ARCH" =~ ^.*-64int$ ]]; then
-    export CFLAGS_COMMON="-m64 $CFLAGS_COMMON"
-    export CXXFLAGS_COMMON="-m64 $CXXFLAGS_COMMON"
-    export LDFLAGS_COMMON="-m64 $LDFLAGS_COMMON"
-fi
 
 #  Clean up
 if [ $CLEAN -eq 1 ]; then
