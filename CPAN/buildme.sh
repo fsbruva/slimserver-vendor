@@ -219,9 +219,9 @@ case "$OS" in
         # On Solaris, both i386 and x64 version of Perl exist.
         # If it is i386, and Perl uses 64 bit integers, then an additional flag is needed.
         if [[ "$ARCH" =~ ^.*-64int$ ]]; then
-        CFLAGS_COMMON="-m64 $CFLAGS_COMMON"
-        CXXFLAGS_COMMON="-m64 $CXXFLAGS_COMMON"
-        LDFLAGS_COMMON="-m64 $LDFLAGS_COMMON"
+            CFLAGS_COMMON="-m64 $CFLAGS_COMMON"
+            CXXFLAGS_COMMON="-m64 $CXXFLAGS_COMMON"
+            LDFLAGS_COMMON="-m64 $LDFLAGS_COMMON"
         fi
     ;;
     Linux)
