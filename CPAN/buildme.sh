@@ -124,7 +124,6 @@ if [ "$PERL_BIN" = "" -o "$CUSTOM_PERL" != "" ]; then
         echo "Failed to find supported Perl version for '$PERL_BIN'"
         exit
     fi
-
 fi
 
 # We have found Perl, so get system arch, according to Perl
@@ -142,10 +141,7 @@ PERL_ARCH=$BUILD/arch/perl5x
 PERL_BASE=$BUILD/5.$PERL_MINOR_VER
 PERL_ARCH=$BUILD/arch/5.$PERL_MINOR_VER
 
-# This script uses the following precedence for FreeBSD:
-# 1. Environment values for CC/CXX/CPP (checks if $CC is already defined)
-# 2. Values defined in /etc/make.conf, or
-# 3. Stock build chain
+# Perform necessary customizations per OS.
 case "$OS" in
     FreeBSD)
        # This script uses the following precedence for FreeBSD:
