@@ -20,11 +20,21 @@ On Debian, Ubuntu etc. make sure you have the following packages installed:
 * g++
 * libc-bin
 * zlib1g-dev
-* libgd-dev
 * libmodule-install-perl
 
+### Preparation of a Red Hat based system
+On Red Hat, CentOS, Fedora, etc. make sure you have the following packages installed:
+* nasm
+* make, gcc
+* patch
+* g++
+* rsync
+* zlib-devel
+* perl-devel
+* perl-core
+
 ### Preparation of a FreeBSD based system
-On FreeBSD, FreeNAS, etc. make sure you have the following packages/ports installed:
+On FreeBSD, FreeNAS, etc. make sure you have the following ports installed:
 * devel/nasm
 * shells/bash
 * devel/gmake
