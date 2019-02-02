@@ -136,8 +136,6 @@ echo "Building with Perl 5.$PERL_MINOR_VER at $PERL_BIN"
 
 # Build dirs
 BUILD=$PWD/build
-PERL_BASE=$BUILD/perl5x
-PERL_ARCH=$BUILD/arch/perl5x
 PERL_BASE=$BUILD/5.$PERL_MINOR_VER
 PERL_ARCH=$BUILD/arch/5.$PERL_MINOR_VER
 
@@ -357,11 +355,6 @@ else
     echo "********************************************************************************************"
     GCC_LIBCPP=false
 fi
-
-# Build dir
-BUILD=$PWD/build
-PERL_BASE=$BUILD/perl5x
-PERL_ARCH=$BUILD/arch/perl5x
 
 #  Clean up
 if [ $CLEAN -eq 1 ]; then
@@ -1053,6 +1046,10 @@ function build_libjpeg {
         if [ "$OSX_VER" -le 1006 ]; then
             # Build 32-bit fork, but only for OSX 10.6 and older.
             cd $TURBO_VER
+
+            # Disable features we don't need, ignore it if we've already patched
+            patch -N -p0 < ../libjpeg-turbo-jmorecfg.h.patch
+
             if [ $CLEAN -eq 1 ]; then
                  $MAKE clean
             fi
