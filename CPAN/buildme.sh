@@ -192,21 +192,20 @@ case "$OS" in
         fi
         MAKE_BIN=/usr/local/bin/gmake
 
-        #for i in libgif libz libgd ; do
-	    for i in libz ; do
-	        ldconfig -r | grep "${i}.so" > /dev/null #On FreeBSD flag -r should be used, there is no -p
-	        if [ $? -ne 0 ] ; then
-	            echo "$i not found - please install it"
-	            exit 1
-	        fi
-	    done
-	    for hdr in "zlib.h"; do
-	        hdr_found=$(find /usr/include/ -name "$hdr");
-	        if [ ! "$hdr_found" ]; then
-	            echo "$hdr not found - please install appropriate development package"
-	            exit 1
-	        fi
-	    done
+	for i in libz ; do
+            #On FreeBSD flag -r should be used, there is no -p
+            if ! ldconfig -r | grep -q "${i}.so" ; then
+                echo "$i not found - please install it"
+	        exit 1
+	    fi
+	done
+	for hdr in "zlib.h"; do
+	    hdr_found=$(find /usr/include/ -name "$hdr");
+	    if [ ! "$hdr_found" ]; then
+	        echo "$hdr not found - please install appropriate development package"
+	        exit 1
+	    fi
+	done
     ;;
     SunOS)
         if [ ! -x /usr/bin/gmake ]; then
@@ -223,21 +222,19 @@ case "$OS" in
         fi
     ;;
     Linux)
-        #for i in libgif libz libgd ; do
-	    for i in libz ; do
-	        ldconfig -p | grep "${i}.so" > /dev/null
-	        if [ $? -ne 0 ] ; then
-	            echo "$i not found - please install it"
-	            exit 1
-	        fi
-	    done
-	    for hdr in "zlib.h"; do
-	        hdr_found=$(find /usr/include -name "$hdr");
-	        if [ ! "$hdr_found" ]; then
-	            echo "$hdr not found - please install appropriate development package"
-	            exit 1
-	        fi
-	    done
+        for i in libz ; do
+            if ! ldconfig -p | grep -q "${i}.so" ; then
+                echo "$i not found - please install it"
+	        exit 1
+	    fi
+	done
+	for hdr in "zlib.h"; do
+	    hdr_found=$(find /usr/include -name "$hdr");
+	    if [ ! "$hdr_found" ]; then
+	        echo "$hdr not found - please install appropriate development package"
+	        exit 1
+	    fi
+	done
     ;;
     Darwin)
         # figure out OSX version and customize SDK options (do not care about patch ver)
