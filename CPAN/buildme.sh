@@ -16,6 +16,9 @@
 #               but this parameter may be used to place the Perl modules directly
 #               within an existing Logitech Media Server installation folder.
 #
+#    jobs       Optional integer to be passed through to make. The default is
+#               one, for safety. Increasing this value can speed builds.
+#
 #    perlbin    Optional string containing the location to a custom Perl binary.
 #               This overrides default behavior of searching the PATH for Perl.
 #
@@ -30,6 +33,7 @@
 RUN_TESTS=1
 USE_HINTS=1
 CLEAN=1
+NUM_MAKE_JOBS=1
 
 function usage {
     cat <<EOF
@@ -37,6 +41,7 @@ $0 [args] [target]
 -h            this help
 -c            do not run make clean
 -i <lmsbase>  install modules in lmsbase directory
+-j <jobs>     set number of processes for make (default: 1)
 -p <perlbin > set custom perl binary (other than one in PATH)
 -t            do not run tests
 
@@ -45,13 +50,16 @@ target: make target - if not specified all will be built
 EOF
 }
 
-while getopts hci:p:t opt; do
+while getopts hci:j:p:t opt; do
   case $opt in
   c)
       CLEAN=0
       ;;
   i)
       LMSBASEDIR=$OPTARG
+      ;;
+  j)
+      NUM_MAKE_JOBS=$OPTARG
       ;;
   p)
       CUSTOM_PERL=$OPTARG
@@ -200,8 +208,7 @@ case "$OS" in
 	    fi
 	done
 	for hdr in "zlib.h"; do
-	    hdr_found=$(find /usr/include/ -name "$hdr");
-	    if [ ! "$hdr_found" ]; then
+	    if [ -z "$(find /usr/include/ -name ${hdr} -print -quit)" ]; then
 	        echo "$hdr not found - please install appropriate development package"
 	        exit 1
 	    fi
@@ -216,6 +223,10 @@ case "$OS" in
         # On Solaris, both i386 and x64 version of Perl exist.
         # If it is i386, and Perl uses 64 bit integers, then an additional flag is needed.
         if [[ "$ARCH" =~ ^.*-64int$ ]]; then
+            CFLAGS_COMMON="-m32 $CFLAGS_COMMON"
+            CXXFLAGS_COMMON="-m32 $CXXFLAGS_COMMON"
+            LDFLAGS_COMMON="-m32 $LDFLAGS_COMMON"
+        elif [[ "$ARCH" =~ ^.*-64$ ]]; then
             CFLAGS_COMMON="-m64 $CFLAGS_COMMON"
             CXXFLAGS_COMMON="-m64 $CXXFLAGS_COMMON"
             LDFLAGS_COMMON="-m64 $LDFLAGS_COMMON"
@@ -229,8 +240,7 @@ case "$OS" in
 	    fi
 	done
 	for hdr in "zlib.h"; do
-	    hdr_found=$(find /usr/include -name "$hdr");
-	    if [ ! "$hdr_found" ]; then
+	    if [ -z "$(find /usr/include/ -name ${hdr} -print -quit)" ]; then
 	        echo "$hdr not found - please install appropriate development package"
 	        exit 1
 	    fi
@@ -541,7 +551,7 @@ function build {
                     ICUFLAGS="-DU_USING_ICU_NAMESPACE=0"
                     ICUOS="Linux"
                 elif [ "$OS" = 'SunOS' ]; then
-                    ICUFLAGS="-m64 -D_XPG6 -DU_USING_ICU_NAMESPACE=0 -DU_CHARSET_IS_UTF8=1"
+                    ICUFLAGS="-D_XPG6 -DU_USING_ICU_NAMESPACE=0 -DU_CHARSET_IS_UTF8=1"
                     ICUOS="Solaris/GCC"
                 elif [ "$OS" = 'FreeBSD' ]; then
                     ICUFLAGS="-DU_USING_ICU_NAMESPACE=0"
@@ -551,7 +561,7 @@ function build {
                 fi
                 CFLAGS="$CFLAGS_COMMON $ICUFLAGS" CXXFLAGS="$CXXFLAGS_COMMON $ICUFLAGS" LDFLAGS="$LDFLAGS_COMMON" \
                     ./runConfigureICU $ICUOS --prefix=$BUILD --enable-static --with-data-packaging=archive
-                $MAKE
+                $MAKE -j $NUM_MAKE_JOBS
                 if [ $? != 0 ]; then
                     echo "make failed"
                     exit $?
@@ -986,7 +996,7 @@ function build_libexif {
     LDFLAGS="$LDFLAGS_COMMON -O3" \
         ./configure -q --prefix=$BUILD \
         --disable-dependency-tracking
-    $MAKE
+    $MAKE -j $NUM_MAKE_JOBS
     if [ $? != 0 ]; then
         echo "make failed"
         exit $?
@@ -1022,14 +1032,14 @@ function build_libjpeg {
             LDFLAGS="$OSX_FLAGS" \
                 ./configure -q --prefix=$BUILD --host x86_64-apple-darwin NASM=/usr/local/bin/nasm \
                 --disable-dependency-tracking
-            $MAKE
+            $MAKE -j $NUM_MAKE_JOBS
             if [ $? != 0 ]; then
                 echo "64-bit OSX make failed"
                 exit $?
             fi
 
             if [ "$OSX_VER" -eq 1006 ]; then
-                # Prep for fork merging - 10.6 requires universal binaries
+                # Prep for fork merging - 10.6 requires universal i386/x64 binaries
                 cp -fv .libs/libjpeg.a ../libjpeg-x86_64.a
             else
                 $MAKE install
@@ -1040,8 +1050,7 @@ function build_libjpeg {
 
         # We only need to build the 32-bit for for older OSX. All versions
         # since 10.7 are 64-bit only.
-        if [ "$OSX_VER" -le 1006 ]; then
-            # Build 32-bit fork, but only for OSX 10.6 and older.
+        if [ "$OSX_VER" -lt 1007 ]; then
             cd $TURBO_VER
 
             # Disable features we don't need, ignore it if we've already patched
@@ -1055,7 +1064,7 @@ function build_libjpeg {
             LDFLAGS="-m32 $OSX_FLAGS" \
                 ./configure -q --host i686-apple-darwin --prefix=$BUILD NASM=/usr/local/bin/nasm \
                 --disable-dependency-tracking
-            $MAKE
+            $MAKE -j $NUM_MAKE_JOBS
             if [ $? != 0 ]; then
                 echo "32-bit OSX make failed"
                 exit $?
@@ -1065,7 +1074,7 @@ function build_libjpeg {
             cd ..
         fi
 
-        # We only need to build the ppc for for older 10.5.
+        # We only need to build the ppc binaries for for OSX 10.5.
         if [ "$OSX_VER" -eq 1005 ]; then
             # build ppc libjpeg 6b
             tar_wrapper zxf jpegsrc.v6b.tar.gz
@@ -1078,7 +1087,7 @@ function build_libjpeg {
             LDFLAGS="-arch ppc -O3 $OSX_FLAGS" \
                 ./configure -q --prefix=$BUILD \
                 --disable-dependency-tracking
-            $MAKE
+            $MAKE -j $NUM_MAKE_JOBS
             if [ $? != 0 ]; then
                 echo "make failed"
                 exit $?
@@ -1091,7 +1100,6 @@ function build_libjpeg {
         if [ "$OSX_VER" -eq 1005 ]; then
             lipo -create libjpeg-i386.a libjpeg-ppc.a -output libjpeg.a
         elif [ "$OSX_VER" -lt 1007 ] ; then
-            # Combine the forks
             lipo -create libjpeg-x86_64.a libjpeg-i386.a -output libjpeg.a
         fi
 
@@ -1109,7 +1117,7 @@ function build_libjpeg {
 
         CFLAGS="$CFLAGS_COMMON" CXXFLAGS="$CXXFLAGS_COMMON" LDFLAGS="$LDFLAGS_COMMON" \
             ./configure -q --prefix=$BUILD --disable-dependency-tracking
-        $MAKE
+        $MAKE -j $NUM_MAKE_JOBS
         if [ $? != 0 ]; then
             echo "make failed"
             exit $?
@@ -1130,7 +1138,7 @@ function build_libjpeg {
         LDFLAGS="$LDFLAGS_COMMON -O3" \
             ./configure -q --prefix=$BUILD \
             --disable-dependency-tracking
-        $MAKE
+        $MAKE -j $NUM_MAKE_JOBS
         if [ $? != 0 ]; then
             echo "make failed"
             exit $?
@@ -1163,7 +1171,7 @@ function build_libpng {
     LDFLAGS="$LDFLAGS_COMMON -O3" \
         ./configure -q --prefix=$BUILD \
         --disable-dependency-tracking
-    $MAKE && $MAKE check
+    $MAKE -j $NUM_MAKE_JOBS && $MAKE check
     if [ $? != 0 ]; then
         echo "make failed"
         exit $?
@@ -1199,7 +1207,7 @@ function build_giflib {
     LDFLAGS="$LDFLAGS_COMMON -O3" \
         ./configure -q --prefix=$BUILD \
         --disable-dependency-tracking
-    $MAKE
+    $MAKE -j $NUM_MAKE_JOBS
     if [ $? != 0 ]; then
         echo "make failed"
         exit $?
@@ -1281,18 +1289,19 @@ function build_ffmpeg {
     if [ "$OS" = "Darwin" ]; then
         # Build 64-bit fork
         if [ "$OSX_VER" -ge 1006 ]; then
+            # Build x86_64 versions of turbo - 64 bit OS was introduced in 10.6
             CFLAGS="-arch x86_64 -O3 -fPIC $OSX_FLAGS" \
             LDFLAGS="-arch x86_64 -O3 -fPIC $OSX_FLAGS" \
                 ./configure $FFOPTS --arch=x86_64
 
-            $MAKE
+            $MAKE -j $NUM_MAKE_JOBS
             if [ $? != 0 ]; then
                 echo "64-bit ffmpeg make failed"
                 exit $?
             fi
 
             if [ "$OSX_VER" -eq 1006 ]; then
-                # Prep for fork merging by arch specific rename
+                # Prep for fork merging - 10.6 requires universal i386/x64 binaries
                 cp -fv libavcodec/libavcodec.a libavcodec-x86_64.a
                 cp -fv libavformat/libavformat.a libavformat-x86_64.a
                 cp -fv libavutil/libavutil.a libavutil-x86_64.a
@@ -1306,13 +1315,14 @@ function build_ffmpeg {
         fi
 
         # Build 32-bit fork (all OSX versions less than 10.7)
-        if [ "$OSX_VER" -le 1006 ]; then
+        # All versions since 10.7 are 64-bit only
+        if [ "$OSX_VER" -lt 1007 ]; then
             $MAKE clean
             CFLAGS="-arch i386 -O3 $OSX_FLAGS" \
             LDFLAGS="-arch i386 -O3 $OSX_FLAGS" \
                 ./configure -q $FFOPTS --arch=x86_32
 
-            $MAKE
+            $MAKE -j $NUM_MAKE_JOBS
             if [ $? != 0 ]; then
                 echo "32-bit ffmpeg make failed"
                 exit $?
@@ -1324,14 +1334,14 @@ function build_ffmpeg {
             cp -fv libswscale/libswscale.a libswscale-i386.a
         fi
 
-        # Build PPC fork (10.5)
+        # We only need to build the ppc fork for OSX 10.5
         if [ "$OSX_VER" -eq 1005 ]; then
             $MAKE clean
             CFLAGS="-arch ppc -O3 $OSX_FLAGS" \
             LDFLAGS="-arch ppc -O3 $OSX_FLAGS" \
                 ./configure $FFOPTS --arch=ppc --disable-altivec
 
-            $MAKE
+            $MAKE -j $NUM_MAKE_JOBS
             if [ $? != 0 ]; then
                 echo "ppc ffmpeg make failed"
                 exit $?
@@ -1350,7 +1360,7 @@ function build_ffmpeg {
             lipo -create libavformat-i386.a libavformat-ppc.a -output libavformat.a
             lipo -create libavutil-i386.a libavutil-ppc.a -output libavutil.a
             lipo -create libswscale-i386.a libswscale-ppc.a -output libswscale.a
-        elif [ "$OSX_VER" -eq 1006 ]; then
+        elif [ "$OSX_VER" -lt 1007 ]; then
             lipo -create libavcodec-x86_64.a libavcodec-i386.a -output libavcodec.a
             lipo -create libavformat-x86_64.a libavformat-i386.a -output libavformat.a
             lipo -create libavutil-x86_64.a libavutil-i386.a -output libavutil.a
@@ -1369,7 +1379,7 @@ function build_ffmpeg {
         LDFLAGS="$LDFLAGS_COMMON -O3" \
             ./configure $FFOPTS
 
-        $MAKE
+        $MAKE -j $NUM_MAKE_JOBS
         if [ $? != 0 ]; then
             echo "make failed"
             exit $?
@@ -1406,7 +1416,7 @@ function build_bdb {
         ../dist/configure -q --prefix=$BUILD $MUTEX \
         --with-cryptography=no -disable-hash --disable-queue --disable-replication --disable-statistics --disable-verify \
         --disable-dependency-tracking --disable-shared
-    $MAKE
+    $MAKE -j $NUM_MAKE_JOBS
     if [ $? != 0 ]; then
         echo "make failed"
         exit $?

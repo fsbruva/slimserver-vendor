@@ -99,5 +99,5 @@ before_install:
 
 script:
   - cd CPAN
-  - bash -o errexit buildme.sh
+  - bash -o errexit buildme.sh -j 4
 
