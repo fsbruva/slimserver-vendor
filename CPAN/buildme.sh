@@ -919,8 +919,8 @@ function build {
             # Early OSX versions did not link libarry correctly libjpeg due to
             # missing x86_64 in libjpeg.dylib, Perl linked OK because it used libjpeg.a
             # Correct linking confirmed with OSX 10.10 and up.
-            tar_wrapper zxf libmediascan-0.3.tar.gz
-            cd libmediascan-0.3
+            tar_wrapper zxf libmediascan-0.4.tar.gz
+            cd libmediascan-0.4
             . ../update-config.sh
 
             CFLAGS="-I$BUILD/include $CFLAGS_COMMON -O3" \
@@ -977,7 +977,7 @@ function build {
             fi
 
             cd ../../..
-            rm -rf libmediascan-0.3
+            rm -rf libmediascan-0.4
             ;;
     esac
 }
