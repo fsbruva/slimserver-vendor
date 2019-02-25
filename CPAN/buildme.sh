@@ -919,8 +919,8 @@ function build {
             # Early OSX versions did not link libarry correctly libjpeg due to
             # missing x86_64 in libjpeg.dylib, Perl linked OK because it used libjpeg.a
             # Correct linking confirmed with OSX 10.10 and up.
-            tar_wrapper zxf libmediascan-0.3.tar.gz
-            cd libmediascan-0.3
+            tar_wrapper zxf libmediascan-0.4.tar.gz
+            cd libmediascan-0.4
             . ../update-config.sh
 
             CFLAGS="-I$BUILD/include $CFLAGS_COMMON -O3" \
@@ -939,7 +939,7 @@ function build {
             build_module Sub-Uplevel-0.22 "" 0
             build_module Tree-DAG_Node-1.06 "" 0
             build_module Test-Warn-0.23 "" 0
-            cd libmediascan-0.3/bindings/perl
+            cd libmediascan-0.4/bindings/perl
             # LMS's hints file is OK and also has custom frameworks added
 
             MSOPTS="--with-static \
@@ -977,7 +977,7 @@ function build {
             fi
 
             cd ../../..
-            rm -rf libmediascan-0.3
+            rm -rf libmediascan-0.4
             ;;
     esac
 }
@@ -1277,6 +1277,7 @@ function build_ffmpeg {
     if [[ "$ARCH" =~ ^(amd64-freebsd|x86_64-linux|i86pc-solaris).*$ ]]; then
         FFOPTS="$FFOPTS --disable-mmx"
     fi
+
     # FreeBSD amd64 needs arch option
     if [[ "$ARCH" =~ ^amd64-freebsd.*$ ]]; then
         FFOPTS="$FFOPTS --arch=x86"
@@ -1284,6 +1285,11 @@ function build_ffmpeg {
         if [[ "$CC_IS_GCC" == true && "$CC_VERSION" -ge 40200 && "$CC_VERSION" -lt 40300 ]]; then
             FFOPTS="$FFOPTS --disable-asm"
         fi
+    fi
+
+    # SunOS and Illumos have problems compiling libmediascan with ASM. So disable it for ffmpeg.
+    if [ "$OS" = "SunOS" ]; then
+        FFOPTS="$FFOPTS --disable-asm"
     fi
 
     if [ "$OS" = "Darwin" ]; then
