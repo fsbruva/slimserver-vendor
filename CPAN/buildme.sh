@@ -208,7 +208,7 @@ case "$OS" in
 	    fi
 	done
 	for hdr in "zlib.h"; do
-	    if [ -z "$(find /usr/include/ -name ${hdr} -print -quit)" ]; then
+	    if [ -z "$(find /usr/include/ -name ${hdr} -print)" ]; then
 	        echo "$hdr not found - please install appropriate development package"
 	        exit 1
 	    fi
@@ -240,7 +240,7 @@ case "$OS" in
 	    fi
 	done
 	for hdr in "zlib.h"; do
-	    if [ -z "$(find /usr/include/ -name ${hdr} -print -quit)" ]; then
+	    if [ -z "$(find /usr/include/ -name ${hdr} -print)" ]; then
 	        echo "$hdr not found - please install appropriate development package"
 	        exit 1
 	    fi
@@ -293,7 +293,7 @@ for i in $GCC $GXX $MAKE nasm rsync ; do
     fi
 done
 
-if [ -n "$(find /usr/lib/ -maxdepth 1 -name '*libungif*' -print -quit)" ] ; then
+if [ -n "$(find /usr/lib/ -maxdepth 1 -name '*libungif*' -print)" ] ; then
     echo "ON SOME PLATFORMS (Ubuntu/Debian at least) THE ABOVE LIBRARIES MAY NEED TO BE TEMPORARILY REMOVED TO ALLOW THE BUILD TO WORK"
 fi
 
