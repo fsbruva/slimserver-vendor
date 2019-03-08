@@ -59,36 +59,36 @@ On OmniOS, etc. make sure you have the following packages installed:
 ## Overall Perl notes:
 You should build using perlbrew and the following command. GCC's stack protector must be disabled
 so the binaries will not be dynamically linked to libssp.so which is not available on some distros.
-NOTE: On 32-bit systems for 5.12 and higher, `-D use64bitint` should be used.
+NOTE: On 32-bit systems for 5.12 and higher, `--thread` should be used.
 
 ### Example command for 5.12.4 install on 32-bit system
 ```
-perlbrew install perl-5.12.4 -D usethreads -D use64bitint -A ccflags=-fno-stack-protector -A ldflags=-fno-stack-protector
+perlbrew install --thread --64int perl-5.12.4 -A ccflags=-fno-stack-protector -A ldflags=-fno-stack-protector
 ```
 
 ### Example command for 5.12.4 install on 64-bit native system
 ```
-perlbrew install perl-5.12.4 -D usethreads -A ccflags=-fno-stack-protector -A ldflags=-fno-stack-protector
+perlbrew install --thread perl-5.12.4 -A ccflags=-fno-stack-protector -A ldflags=-fno-stack-protector
 ```
 In addition, you should make sure that your Perl was compiled with the same family of compiler 
 (gcc or clang) as you are attempting to use with buildme.sh. Compiler mismatches can cause 
 signficant problems.
 
 ## Supported OS/Perl Combinations:
-#### Linux (Perl 5.8-26, both threaded & non )
+#### Linux (Perl 5.8-28, both threaded & non )
   -  i386/x86_64 Linux
   -  ARM Linux
   -  PowerPC Linux
   -  Sparc Linux (ReadyNAS)
 #### Mac OSX
-  -  Under 10.5, builds Universal Binaries for i386/ppc Perl 5.8.8
-  -  Under 10.6, builds Universal Binaries for i386/x86_64 Perl 5.10.0
-  -  Under 10.7, builds for x86_64 Perl 5.12.3 (Lion does not support 32-bit CPUs)
-  -  Under 10.9, builds for x86_64 Perl 5.16
-  -  Under 10.10, builds for x86_64 Perl 5.18
-  -  Under 10.11, builds for x86_64 Perl 5.18
-  -  Under 10.12, builds for x86_64 Perl 5.18
-  -  Under 10.13, builds for x86_64 Perl 5.18
+  -  On 10.5, builds Universal Binaries for i386/ppc Perl 5.8.8
+  -  On 10.6, builds Universal Binaries for i386/x86_64 Perl 5.10.0
+  -  On 10.7, builds for x86_64 Perl 5.12.3 (Lion does not support 32-bit CPUs)
+  -  On 10.9, builds for x86_64 Perl 5.16
+  -  On 10.10, builds for x86_64 Perl 5.18
+  -  On 10.11, builds for x86_64 Perl 5.18
+  -  On 10.12, builds for x86_64 Perl 5.18
+  -  On 10.13, builds for x86_64 Perl 5.18
 #### FreeBSD 7-11 (Perl 5.8-14, 5.20-28)
   -  i386/x86_64
 #### Solaris/OmniOS/Openindiana/Illumos
