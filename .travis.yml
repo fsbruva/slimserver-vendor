@@ -13,7 +13,6 @@ perl:
   - "5.26-shrplib"
 os:
   - linux
-dist: xenial
 env:
   - CC=gcc && CXX=g++
   - CC=clang && CXX=clang++
@@ -26,7 +25,7 @@ addons:
       - rsync
       - zlib1g-dev
       - libmodule-install-perl
-# We can use this again once 10.10 is deprecated.
+# We can use this in lieu of the before_install code once 10.10 is deprecated.
 #  homebrew:
 #    update: true
 #    packages:
@@ -36,6 +35,60 @@ addons:
 
 matrix:
   include:
+# Xenial does not have all version of Perl already installed
+    - name: "Xenial_5.22_gcc"
+      dist: xenial
+      language: perl
+      perl: "5.22"
+      env: CC=gcc && CXX=g++
+    - name: "Xenial_5.22_clang"
+      dist: xenial
+      language: perl
+      perl: "5.22"
+      env: CC=clang && CXX=clang++
+    - name: "Xenial_5.24_gcc"
+      dist: xenial
+      language: perl
+      perl: "5.24"
+      env: CC=gcc && CXX=g++
+    - name: "Xenial_5.24_clang"
+      dist: xenial
+      language: perl
+      perl: "5.24"
+      env: CC=clang && CXX=clang++
+    - name: "Xenial_5.24-shrplib_gcc"
+      dist: xenial
+      language: perl
+      perl: "5.24-shrplib"
+      env: CC=gcc && CXX=g++
+    - name: "Xenial_5.24-shrplib_clang"
+      dist: xenial
+      language: perl
+      perl: "5.24-shrplib"
+      env: CC=clang && CXX=clang++
+    - name: "Xenial_5.26_gcc"
+      dist: xenial
+      language: perl
+      perl: "5.26"
+      env: CC=gcc && CXX=g++
+    - name: "Xenial_5.26_clang"
+      dist: xenial
+      language: perl
+      perl: "5.26"
+      env: CC=clang && CXX=clang++
+    - name: "Xenial_5.26-shrplib_gcc"
+      dist: xenial
+      language: perl
+      perl: "5.26-shrplib"
+      env: CC=gcc && CXX=g++
+    - name: "Xenial_5.26-shrplib_clang"
+      dist: xenial
+      language: perl
+      perl: "5.26-shrplib"
+      env: CC=clang && CXX=clang++
+# The OSX build images do not use perlbrew, so must masquerade as C++
+# projects to enable build using stock Perl. Matrix "env:" needs to be
+# overridden so that matrix expansion doesn't result in CC=gcc.
     - name: "osx:10.10_xcode:6.4"
       language: cpp
       os: osx
