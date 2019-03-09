@@ -1,3 +1,4 @@
+stage: "Trusy (14.04)"
 language: perl
 perl:
   - "5.16"
@@ -33,12 +34,12 @@ addons:
 #      - rsync
 
 
-matrix:
+jobs:
   include:
 # Xenial does not have all the above version of Perl already installed
 # Matrix hack: Declare same stage multiple times...
     - &xenial_alias
-      Stage: "Xenial (16.04)"
+      stage: "Xenial (16.04)"
       dist: xenial
       language: perl
       perl: "5.22"
@@ -78,7 +79,7 @@ matrix:
 # overridden so that matrix expansion doesn't result in CC=gcc.
 # Matrix hack: Declare same stage multiple times...
     - &osx_alias
-      Stage: "macOS"
+      stage: macOS
       os: osx
       osx_image: xcode6.4
       language: cpp
