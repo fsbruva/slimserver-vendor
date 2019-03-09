@@ -1,4 +1,4 @@
-stage: "Trusy (14.04)"
+stage: "Trusty (14.04)"
 language: perl
 perl:
   - "5.16"
@@ -51,25 +51,21 @@ jobs:
       env: CC=clang && CXX=clang++
     - <<: *xenial_alias
       perl: "5.24"
-      env: CC=gcc && CXX=g++
     - <<: *xenial_alias
       perl: "5.24"
       env: CC=clang && CXX=clang++
     - <<: *xenial_alias
       perl: "5.24-shrplib"
-      env: CC=gcc && CXX=g++
     - <<: *xenial_alias
       perl: "5.24-shrplib"
       env: CC=clang && CXX=clang++
     - <<: *xenial_alias
       perl: "5.26"
-      env: CC=gcc && CXX=g++
     - <<: *xenial_alias
       perl: "5.26"
       env: CC=clang && CXX=clang++
     - <<: *xenial_alias
       perl: "5.26-shrplib"
-      env: CC=gcc && CXX=g++
     - <<: *xenial_alias
       perl: "5.26-shrplib"
       env: CC=clang && CXX=clang++
@@ -83,6 +79,7 @@ jobs:
       os: osx
       osx_image: xcode6.4
       language: cpp
+      perl: "5.18"
       env: EVERYTHING=awesome
       before_install:
         - brew update
