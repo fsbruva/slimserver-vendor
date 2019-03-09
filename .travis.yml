@@ -1,3 +1,4 @@
+stage: Trusty (14.04)
 language: perl
 perl:
   - "5.16"
@@ -35,121 +36,81 @@ addons:
 
 matrix:
   include:
-# Xenial does not have all version of Perl already installed
-    - name: "Xenial_5.22_gcc"
+# Xenial does not have all the above version of Perl already installed
+# Matrix hack: Declare same stage multiple times...
+    - &xenial_alias
+      Stage: Xenial (16.04)
       dist: xenial
       language: perl
       perl: "5.22"
       env: CC=gcc && CXX=g++
-    - name: "Xenial_5.22_clang"
-      dist: xenial
-      language: perl
+
+    # Subsequent instances use alias to test different versions
+    - <<: *xenial_alias
       perl: "5.22"
       env: CC=clang && CXX=clang++
-    - name: "Xenial_5.24_gcc"
-      dist: xenial
-      language: perl
+    - <<: *xenial_alias
       perl: "5.24"
       env: CC=gcc && CXX=g++
-    - name: "Xenial_5.24_clang"
-      dist: xenial
-      language: perl
+    - <<: *xenial_alias
       perl: "5.24"
       env: CC=clang && CXX=clang++
-    - name: "Xenial_5.24-shrplib_gcc"
-      dist: xenial
-      language: perl
+    - <<: *xenial_alias
       perl: "5.24-shrplib"
       env: CC=gcc && CXX=g++
-    - name: "Xenial_5.24-shrplib_clang"
-      dist: xenial
-      language: perl
+    - <<: *xenial_alias
       perl: "5.24-shrplib"
       env: CC=clang && CXX=clang++
-    - name: "Xenial_5.26_gcc"
-      dist: xenial
-      language: perl
+    - <<: *xenial_alias
       perl: "5.26"
       env: CC=gcc && CXX=g++
-    - name: "Xenial_5.26_clang"
-      dist: xenial
-      language: perl
+    - <<: *xenial_alias
       perl: "5.26"
       env: CC=clang && CXX=clang++
-    - name: "Xenial_5.26-shrplib_gcc"
-      dist: xenial
-      language: perl
+    - <<: *xenial_alias
       perl: "5.26-shrplib"
       env: CC=gcc && CXX=g++
-    - name: "Xenial_5.26-shrplib_clang"
-      dist: xenial
-      language: perl
+    - <<: *xenial_alias
       perl: "5.26-shrplib"
       env: CC=clang && CXX=clang++
+
 # The OSX build images do not use perlbrew, so must masquerade as C++
 # projects to enable build using stock Perl. Matrix "env:" needs to be
 # overridden so that matrix expansion doesn't result in CC=gcc.
-    - name: "osx:10.10_xcode:6.4"
-      language: cpp
+# Matrix hack: Declare same stage multiple times...
+    - &osx_alias
+      Stage: macOS
       os: osx
       osx_image: xcode6.4
-      env: EVERYTHING=awesome
-    - name: "osx:10.13_xcode:10.1"
       language: cpp
-      os: osx
+      env: EVERYTHING=awesome
+      before_install:
+        - brew update
+        - brew install nasm rsync
+
+    # Subsequent instances use alias to test different versions
+    - <<: *osx_alias
       osx_image: xcode10.1
-      env: EVERYTHING=awesome
-    - name: "osx:10.13_xcode:10"
-      language: cpp
-      os: osx
+    - <<: *osx_alias
       osx_image: xcode10
-      env: EVERYTHING=awesome
-    - name: "osx:10.13_xcode:9.4"
-      language: cpp
-      os: osx
+    - <<: *osx_alias
       osx_image: xcode9.4
-      env: EVERYTHING=awesome
-    - name: "osx:10.13_xcode:9.3"
-      language: cpp
-      os: osx
+    - <<: *osx_alias
       osx_image: xcode9.3
-      env: EVERYTHING=awesome
-    - name: "osx:10.12_xcode:9.2"
-      language: cpp
-      os: osx
+    - <<: *osx_alias
       osx_image: xcode9.2
-      env: EVERYTHING=awesome
-    - name: "osx:10.12_xcode:9.1"
-      language: cpp
-      os: osx
+    - <<: *osx_alias
       osx_image: xcode9.1
-      env: EVERYTHING=awesome
-    - name: "osx:10.12_xcode:9"
-      language: cpp
-      os: osx
+    - <<: *osx_alias
       osx_image: xcode9
-      env: EVERYTHING=awesome
-    - name: "osx:10.12_xcode:8.3"
-      language: cpp
-      os: osx
+    - <<: *osx_alias
       osx_image: xcode8.3
-      env: EVERYTHING=awesome
-    - name: "osx:10.12_xcode:8.0"
-      language: cpp
-      os: osx
+    - <<: *osx_alias
       osx_image: xcode8
-      env: EVERYTHING=awesome
-    - name: "osx:10.11_xcode:7.3"
-      language: cpp
-      os: osx
+    - <<: *osx_alias
       osx_image: xcode7.3
-      env: EVERYTHING=awesome
 
 install: true
-
-before_install:
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update          ; fi
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install nasm rsync      ; fi
 
 script:
   - cd CPAN
