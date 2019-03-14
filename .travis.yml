@@ -70,15 +70,15 @@ jobs:
       perl: "5.26-shrplib"
       env: CC=clang && CXX=clang++
 
-# The OSX build images do not use perlbrew, so must masquerade as C++
+# The macOS build images do not use perlbrew, so must masquerade as C++
 # projects to enable build using stock Perl. Matrix "env:" needs to be
 # overridden so that matrix expansion doesn't result in CC=gcc.
 # Matrix hack: Declare same stage multiple times...
-    - &osx_alias
+    - &macOS_alias
       stage: macOS
       os: osx
       osx_image: xcode6.4
-      name: "OSX 10.10"
+      name: "macOS 10.10"
       language: cpp
       perl: "5.18"   # This label may not reflect reality
       env: EVERYTHING=awesome
@@ -87,36 +87,36 @@ jobs:
         - brew install nasm rsync
 
     # Subsequent instances use alias to test different versions
-    - <<: *osx_alias
+    - <<: *macOS_alias
       osx_image: xcode7.3
-      name: "OSX 10.11"
-    - <<: *osx_alias
+      name: "macOS 10.11"
+    - <<: *macOS_alias
       osx_image: xcode8
-      name: "OSX 10.12"
-    - <<: *osx_alias
+      name: "macOS 10.12"
+    - <<: *macOS_alias
       osx_image: xcode8.3
-      name: "OSX 10.12"
-    - <<: *osx_alias
+      name: "macOS 10.12"
+    - <<: *macOS_alias
       osx_image: xcode9
-      name: "OSX 10.12"
-    - <<: *osx_alias
+      name: "macOS 10.12"
+    - <<: *macOS_alias
       osx_image: xcode9.1
-      name: "OSX 10.12"
-    - <<: *osx_alias
+      name: "macOS 10.12"
+    - <<: *macOS_alias
       osx_image: xcode9.2
-      name: "OSX 10.12"
-    - <<: *osx_alias
+      name: "macOS 10.12"
+    - <<: *macOS_alias
       osx_image: xcode9.3
-      name: "OSX 10.13"
-    - <<: *osx_alias
+      name: "macOS 10.13"
+    - <<: *macOS_alias
       osx_image: xcode9.4
-      name: "OSX 10.13"
-    - <<: *osx_alias
+      name: "macOS 10.13"
+    - <<: *macOS_alias
       osx_image: xcode10
-      name: "OSX 10.13"
-    - <<: *osx_alias
+      name: "macOS 10.13"
+    - <<: *macOS_alias
       osx_image: xcode10.1
-      name: "OSX 10.13"
+      name: "macOS 10.13"
 
 install: true
 
