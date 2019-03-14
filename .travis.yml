@@ -80,7 +80,7 @@ jobs:
       osx_image: xcode6.4
       name: "OSX 10.10"
       language: cpp
-      perl: "stock"
+      perl: "5.18"   # This label may not reflect reality
       env: EVERYTHING=awesome
       before_install:
         - brew update
