@@ -247,35 +247,35 @@ case "$OS" in
 	done
     ;;
     Darwin)
-        # figure out OSX version and customize SDK options (do not care about patch ver)
-        OSX_VER_STR=`/usr/bin/sw_vers -productVersion |  sed "s#\ *)\ *##g" | sed 's/\.[0-9]*$//g'`
+        # figure out macOS version and customize SDK options (do not care about patch ver)
+        MACOS_VER_STR=`/usr/bin/sw_vers -productVersion |  sed "s#\ *)\ *##g" | sed 's/\.[0-9]*$//g'`
 
         # This transforms the OS ver into a 4 digit number with leading zeros for the
         # Darwin version, e.g., 10.6 --> 1006, 10.12 --> 1012.
-        OSX_VER=`echo "$OSX_VER_STR" | sed -e 's/\.\([0-9][0-9]\)/\1/g' -e 's/\.\([0-9]\)/0\1/g' -e 's/^[0-9]\{3\}$/&00/'`
+        MACOS_VER=`echo "$MACOS_VER_STR" | sed -e 's/\.\([0-9][0-9]\)/\1/g' -e 's/\.\([0-9]\)/0\1/g' -e 's/^[0-9]\{3\}$/&00/'`
 
-        if [ "$OSX_VER" -eq 1005 ]; then
+        if [ "$MACOS_VER" -eq 1005 ]; then
             # Leopard, build for i386/ppc with support back to 10.4
-            OSX_ARCH="-arch i386 -arch ppc"
-            OSX_FLAGS="-isysroot /Developer/SDKs/MacOSX10.4u.sdk -mmacosx-version-min=10.4"
-        elif [ "$OSX_VER" -eq 1006 ]; then
+            MACOS_ARCH="-arch i386 -arch ppc"
+            MACOS_FLAGS="-isysroot /Developer/SDKs/MacOSX10.4u.sdk -mmacosx-version-min=10.4"
+        elif [ "$MACOS_VER" -eq 1006 ]; then
             # Snow Leopard, build for x86_64/i386 with support back to 10.5
-            OSX_ARCH="-arch x86_64 -arch i386"
-            OSX_FLAGS="-isysroot /Developer/SDKs/MacOSX10.5.sdk -mmacosx-version-min=10.5"
-        elif [ "$OSX_VER" -eq 1007 ]; then
+            MACOS_ARCH="-arch x86_64 -arch i386"
+            MACOS_FLAGS="-isysroot /Developer/SDKs/MacOSX10.5.sdk -mmacosx-version-min=10.5"
+        elif [ "$MACOS_VER" -eq 1007 ]; then
             # Lion, build for x86_64 with support back to 10.6
-            OSX_ARCH="-arch x86_64"
-            OSX_FLAGS="-isysroot /Developer/SDKs/MacOSX10.6.sdk -mmacosx-version-min=10.6"
-        elif [ "$OSX_VER" -ge 1009 ]; then
-            OSX_ARCH="-arch x86_64"
-            OSX_FLAGS="-mmacosx-version-min=10.9"
+            MACOS_ARCH="-arch x86_64"
+            MACOS_FLAGS="-isysroot /Developer/SDKs/MacOSX10.6.sdk -mmacosx-version-min=10.6"
+        elif [ "$MACOS_VER" -ge 1009 ]; then
+            MACOS_ARCH="-arch x86_64"
+            MACOS_FLAGS="-mmacosx-version-min=10.9"
         else
             echo "Unsupported Mac OS version."
             exit 1
         fi
-        CFLAGS_COMMON="$CFLAGS_COMMON $OSX_ARCH $OSX_FLAGS"
-        CXXFLAGS_COMMON="$CXXFLAGS_COMMON $OSX_ARCH $OSX_FLAGS"
-        LDFLAGS_COMMON="$LDFLAGS_COMMON $OSX_ARCH $OSX_FLAGS"
+        CFLAGS_COMMON="$CFLAGS_COMMON $MACOS_ARCH $MACOS_FLAGS"
+        CXXFLAGS_COMMON="$CXXFLAGS_COMMON $MACOS_ARCH $MACOS_FLAGS"
+        LDFLAGS_COMMON="$LDFLAGS_COMMON $MACOS_ARCH $MACOS_FLAGS"
     ;;
 esac
 
@@ -406,7 +406,7 @@ function build_module {
     cd "${module}"
 
     if [ $local_use_hints -eq 1 ]; then
-        # Always copy in our custom hints for OSX
+        # Always copy in our custom hints for macOS
         cp -Rv ../hints .
     fi
     if [ $PERL_BIN ]; then
@@ -607,7 +607,7 @@ function build {
                 $PERL_BIN Makefile.PL INSTALL_BASE=$PERL_BASE $PERL_CONFIG_CUSTOM $2
 
                 if [ "$OS" = 'Darwin' ]; then
-                    # OSX does not seem to properly find -lstdc++, so we need to hack the Makefile to add it
+                    # macOS does not seem to properly find -lstdc++, so we need to hack the Makefile to add it
                     $PERL_BIN -p -i -e "s{^LDLOADLIBS =.+}{LDLOADLIBS = -L$PWD/../build/lib -licudata_s -licui18n_s -licuuc_s -lstdc++}" Makefile
                 fi
 
@@ -840,7 +840,7 @@ function build {
             $MAKE install
             cd ..
 
-            # Symlink static versions of libraries to avoid OSX linker choosing dynamic versions
+            # Symlink static versions of libraries to avoid macOS linker choosing dynamic versions
             cd build/lib
             ln -sf libexpat.a libexpat_s.a
             cd ../..
@@ -885,7 +885,7 @@ function build {
             $MAKE install
             cd ..
 
-            # Symlink static version of library to avoid OSX linker choosing dynamic versions
+            # Symlink static version of library to avoid macOS linker choosing dynamic versions
             cd build/lib
             ln -sf libfreetype.a libfreetype_s.a
             cd ../..
@@ -916,9 +916,9 @@ function build {
             build_bdb
 
             # build libmediascan
-            # Early OSX versions did not link libarry correctly libjpeg due to
+            # Early macOS versions did not link library correctly libjpeg due to
             # missing x86_64 in libjpeg.dylib, Perl linked OK because it used libjpeg.a
-            # Correct linking confirmed with OSX 10.10 and up.
+            # Correct linking confirmed with macOS 10.10 and up.
             tar_wrapper zxf libmediascan-0.4.tar.gz
             cd libmediascan-0.4
             . ../update-config.sh
@@ -951,7 +951,7 @@ function build {
                 --with-gif-includes=$BUILD/include \
                 --with-bdb-includes=$BUILD/include"
 
-            # FreeBSD and OSx don't have GNU gettext in the base. This only prevents exif logging.
+            # FreeBSD and macOS don't have GNU gettext in the base. This only prevents exif logging.
             if [[ "$OS" == "FreeBSD" || "$OS" == "Darwin" ]]; then
                 MSOPTS="$MSOPTS --omit-intl"
             fi
@@ -1019,7 +1019,7 @@ function build_libjpeg {
     TURBO_VER="libjpeg-turbo-1.5.3"
     if [ "$OS" = "Darwin" ]; then
     tar_wrapper zxf $TURBO_VER.tar.gz
-        if [ "$OSX_VER" -ge 1006 ]; then
+        if [ "$MACOS_VER" -ge 1006 ]; then
             # Build x86_64 versions of turbo - 64 bit OS was introduced in 10.6
             cd $TURBO_VER
 
@@ -1027,18 +1027,18 @@ function build_libjpeg {
             patch -p0 < ../libjpeg-turbo-jmorecfg.h.patch
 
             # Build 64-bit fork
-            CFLAGS="-O3 $OSX_FLAGS" \
-            CXXFLAGS="-O3 $OSX_FLAGS" \
-            LDFLAGS="$OSX_FLAGS" \
+            CFLAGS="-O3 $MACOS_FLAGS" \
+            CXXFLAGS="-O3 $MACOS_FLAGS" \
+            LDFLAGS="$MACOS_FLAGS" \
                 ./configure -q --prefix=$BUILD --host x86_64-apple-darwin NASM=/usr/local/bin/nasm \
                 --disable-dependency-tracking
             $MAKE -j $NUM_MAKE_JOBS
             if [ $? != 0 ]; then
-                echo "64-bit OSX make failed"
+                echo "64-bit macOS make failed"
                 exit $?
             fi
 
-            if [ "$OSX_VER" -eq 1006 ]; then
+            if [ "$MACOS_VER" -eq 1006 ]; then
                 # Prep for fork merging - 10.6 requires universal i386/x64 binaries
                 cp -fv .libs/libjpeg.a ../libjpeg-x86_64.a
             else
@@ -1048,9 +1048,9 @@ function build_libjpeg {
             cd ..
         fi
 
-        # We only need to build the 32-bit for for older OSX. All versions
+        # We only need to build the 32-bit for for older macOS. All versions
         # since 10.7 are 64-bit only.
-        if [ "$OSX_VER" -lt 1007 ]; then
+        if [ "$MACOS_VER" -lt 1007 ]; then
             cd $TURBO_VER
 
             # Disable features we don't need, ignore it if we've already patched
@@ -1059,14 +1059,14 @@ function build_libjpeg {
             if [ $CLEAN -eq 1 ]; then
                  $MAKE clean
             fi
-            CFLAGS="-O3 -m32 $OSX_FLAGS" \
-            CXXFLAGS="-O3 -m32 $OSX_FLAGS" \
-            LDFLAGS="-m32 $OSX_FLAGS" \
+            CFLAGS="-O3 -m32 $MACOS_FLAGS" \
+            CXXFLAGS="-O3 -m32 $MACOS_FLAGS" \
+            LDFLAGS="-m32 $MACOS_FLAGS" \
                 ./configure -q --host i686-apple-darwin --prefix=$BUILD NASM=/usr/local/bin/nasm \
                 --disable-dependency-tracking
             $MAKE -j $NUM_MAKE_JOBS
             if [ $? != 0 ]; then
-                echo "32-bit OSX make failed"
+                echo "32-bit macOS make failed"
                 exit $?
             fi
             $MAKE install
@@ -1074,8 +1074,8 @@ function build_libjpeg {
             cd ..
         fi
 
-        # We only need to build the ppc binaries for for OSX 10.5.
-        if [ "$OSX_VER" -eq 1005 ]; then
+        # We only need to build the ppc binaries for for macOS 10.5.
+        if [ "$MACOS_VER" -eq 1005 ]; then
             # build ppc libjpeg 6b
             tar_wrapper zxf jpegsrc.v6b.tar.gz
             cd jpeg-6b
@@ -1083,8 +1083,8 @@ function build_libjpeg {
             # Disable features we don't need
             cp -fv ../libjpeg62-jmorecfg.h jmorecfg.h
 
-            CFLAGS="-arch ppc -O3 $OSX_FLAGS" \
-            LDFLAGS="-arch ppc -O3 $OSX_FLAGS" \
+            CFLAGS="-arch ppc -O3 $MACOS_FLAGS" \
+            LDFLAGS="-arch ppc -O3 $MACOS_FLAGS" \
                 ./configure -q --prefix=$BUILD \
                 --disable-dependency-tracking
             $MAKE -j $NUM_MAKE_JOBS
@@ -1097,9 +1097,9 @@ function build_libjpeg {
         fi
 
         # Combine the forks (only needed for those platforms which require universal binaries)
-        if [ "$OSX_VER" -eq 1005 ]; then
+        if [ "$MACOS_VER" -eq 1005 ]; then
             lipo -create libjpeg-i386.a libjpeg-ppc.a -output libjpeg.a
-        elif [ "$OSX_VER" -lt 1007 ] ; then
+        elif [ "$MACOS_VER" -lt 1007 ] ; then
             lipo -create libjpeg-x86_64.a libjpeg-i386.a -output libjpeg.a
         fi
 
@@ -1294,10 +1294,10 @@ function build_ffmpeg {
 
     if [ "$OS" = "Darwin" ]; then
         # Build 64-bit fork
-        if [ "$OSX_VER" -ge 1006 ]; then
+        if [ "$MACOS_VER" -ge 1006 ]; then
             # Build x86_64 versions of turbo - 64 bit OS was introduced in 10.6
-            CFLAGS="-arch x86_64 -O3 -fPIC $OSX_FLAGS" \
-            LDFLAGS="-arch x86_64 -O3 -fPIC $OSX_FLAGS" \
+            CFLAGS="-arch x86_64 -O3 -fPIC $MACOS_FLAGS" \
+            LDFLAGS="-arch x86_64 -O3 -fPIC $MACOS_FLAGS" \
                 ./configure $FFOPTS --arch=x86_64
 
             $MAKE -j $NUM_MAKE_JOBS
@@ -1306,7 +1306,7 @@ function build_ffmpeg {
                 exit $?
             fi
 
-            if [ "$OSX_VER" -eq 1006 ]; then
+            if [ "$MACOS_VER" -eq 1006 ]; then
                 # Prep for fork merging - 10.6 requires universal i386/x64 binaries
                 cp -fv libavcodec/libavcodec.a libavcodec-x86_64.a
                 cp -fv libavformat/libavformat.a libavformat-x86_64.a
@@ -1320,12 +1320,12 @@ function build_ffmpeg {
             fi
         fi
 
-        # Build 32-bit fork (all OSX versions less than 10.7)
+        # Build 32-bit fork (all macOS versions less than 10.7)
         # All versions since 10.7 are 64-bit only
-        if [ "$OSX_VER" -lt 1007 ]; then
+        if [ "$MACOS_VER" -lt 1007 ]; then
             $MAKE clean
-            CFLAGS="-arch i386 -O3 $OSX_FLAGS" \
-            LDFLAGS="-arch i386 -O3 $OSX_FLAGS" \
+            CFLAGS="-arch i386 -O3 $MACOS_FLAGS" \
+            LDFLAGS="-arch i386 -O3 $MACOS_FLAGS" \
                 ./configure -q $FFOPTS --arch=x86_32
 
             $MAKE -j $NUM_MAKE_JOBS
@@ -1340,11 +1340,11 @@ function build_ffmpeg {
             cp -fv libswscale/libswscale.a libswscale-i386.a
         fi
 
-        # We only need to build the ppc fork for OSX 10.5
-        if [ "$OSX_VER" -eq 1005 ]; then
+        # We only need to build the ppc fork for macOS 10.5
+        if [ "$MACOS_VER" -eq 1005 ]; then
             $MAKE clean
-            CFLAGS="-arch ppc -O3 $OSX_FLAGS" \
-            LDFLAGS="-arch ppc -O3 $OSX_FLAGS" \
+            CFLAGS="-arch ppc -O3 $MACOS_FLAGS" \
+            LDFLAGS="-arch ppc -O3 $MACOS_FLAGS" \
                 ./configure $FFOPTS --arch=ppc --disable-altivec
 
             $MAKE -j $NUM_MAKE_JOBS
@@ -1359,14 +1359,14 @@ function build_ffmpeg {
             cp -fv libswscale/libswscale.a libswscale-ppc.a
         fi
 
-        # Combine the forks (if necessary). OSx 10.7 and onwards do not need
+        # Combine the forks (if necessary). macOS 10.7 and onwards do not need
         # universal binaries.
-        if [ "$OSX_VER" -eq 1005 ]; then
+        if [ "$MACOS_VER" -eq 1005 ]; then
             lipo -create libavcodec-i386.a libavcodec-ppc.a -output libavcodec.a
             lipo -create libavformat-i386.a libavformat-ppc.a -output libavformat.a
             lipo -create libavutil-i386.a libavutil-ppc.a -output libavutil.a
             lipo -create libswscale-i386.a libswscale-ppc.a -output libswscale.a
-        elif [ "$OSX_VER" -lt 1007 ]; then
+        elif [ "$MACOS_VER" -lt 1007 ]; then
             lipo -create libavcodec-x86_64.a libavcodec-i386.a -output libavcodec.a
             lipo -create libavformat-x86_64.a libavformat-i386.a -output libavformat.a
             lipo -create libavutil-x86_64.a libavutil-i386.a -output libavutil.a
