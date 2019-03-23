@@ -1219,7 +1219,7 @@ function build_giflib {
 }
 
 function build_ffmpeg {
-    FFMPEG_PREFIX="ffmpeg-4.1.1"
+    FFMPEG_PREFIX="ffmpeg-4.1.2"
     FFMPEG_VER_TO_BUILD=`echo ${FFMPEG_PREFIX##*-} | sed "s#\ *)\ *##g" | \
             sed -e 's/\.\([0-9][0-9]\)/\1/g' -e 's/\.\([0-9]\)/0\1/g' -e 's/^[0-9]\{3,4\}$/&00/'`
     echo "build ffmpeg"
@@ -1411,7 +1411,7 @@ function build_bdb {
     fi
 
     # build bdb
-    DB_PREFIX="db-6.2.32"
+    DB_PREFIX="db-6.2.38"
     tar_wrapper zxf $DB_PREFIX.tar.gz
     cd $DB_PREFIX/dist
     . ../../update-config.sh
