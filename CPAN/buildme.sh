@@ -988,8 +988,8 @@ function build_libexif {
     fi
 
     # build libexif
-    tar_wrapper jxf libexif-0.6.20.tar.bz2
-    cd libexif-0.6.20
+    tar_wrapper jxf libexif-0.6.21.tar.bz2
+    cd libexif-0.6.21
     . ../update-config.sh
 
     CFLAGS="$CFLAGS_COMMON -O3" \
@@ -1004,7 +1004,7 @@ function build_libexif {
     $MAKE install
     cd ..
 
-    rm -rf libexif-0.6.20
+    rm -rf libexif-0.6.21
 }
 
 function build_libjpeg {
