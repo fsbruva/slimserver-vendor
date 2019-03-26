@@ -919,8 +919,8 @@ function build {
             # Early macOS versions did not link library correctly libjpeg due to
             # missing x86_64 in libjpeg.dylib, Perl linked OK because it used libjpeg.a
             # Correct linking confirmed with macOS 10.10 and up.
-            tar_wrapper zxf libmediascan-0.4.tar.gz
-            cd libmediascan-0.4
+            tar_wrapper zxf libmediascan-0.2.tar.gz
+            cd libmediascan-0.2
             . ../update-config.sh
 
             CFLAGS="-I$BUILD/include $CFLAGS_COMMON -O3" \
@@ -939,7 +939,7 @@ function build {
             build_module Sub-Uplevel-0.22 "" 0
             build_module Tree-DAG_Node-1.06 "" 0
             build_module Test-Warn-0.23 "" 0
-            cd libmediascan-0.4/bindings/perl
+            cd libmediascan-0.2/bindings/perl
             # LMS's hints file is OK and also has custom frameworks added
 
             MSOPTS="--with-static \
@@ -977,7 +977,7 @@ function build {
             fi
 
             cd ../../..
-            rm -rf libmediascan-0.4
+            rm -rf libmediascan-0.2
             ;;
     esac
 }
