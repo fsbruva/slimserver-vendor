@@ -2,44 +2,30 @@
 #
 # $Id$
 #
-# This script builds all binary Perl modules required by Squeezebox Server.
+# Filename: buildme.sh
+# Description:
+# 	This script builds all binary Perl modules required by Squeezebox Server.
+#       It first parses the input values for any custom parameters. Then it checks
+#       to ensure all necessary prerequites are present on the the system. It then
+#	makes the targets specified (or all).
+#	See the README.md for supported OSes and build notes/preparations.
 #
-# Supported OSes:
+# Arguments:
+#    lmsbase    Optional string containing the path to the desired installation
+#               directory. The default location is within the build/arch directory,
+#               but this parameter may be used to place the Perl modules directly
+#               within an existing Logitech Media Server installation folder.
 #
-# Linux (Perl 5.8.8, 5.10.0, 5.12.4, 5.14.1, 5.16.3)
-#   i386/x86_64 Linux
-#   ARM Linux
-#   PowerPC Linux
-#   Sparc Linux (ReadyNAS)
-# Mac OSX
-#   Under 10.5, builds Universal Binaries for i386/ppc Perl 5.8.8
-#   Under 10.6, builds Universal Binaries for i386/x86_64 Perl 5.10.0
-#   Under 10.7, builds for x86_64 Perl 5.12.3 (Lion does not support 32-bit CPUs)
-#   Under 10.9, builds for x86_64 Perl 5.16
-#   Under 10.10, builds for x86_64 Perl 5.18
-# FreeBSD 7.2 (Perl 5.8.9)
-# FreeBSD 8.X,9.X (Perl 5.12.4)
-# Solaris
-#   builds are best done with custom compiled perl and gcc
-#   using the following PATH=/opt/gcc-5.1.0/bin:/usr/gnu/bin:$PATH
-#   plus a path to a version of yasm and nasm
+#    perlbin    Optional string containing the location to a custom Perl binary.
+#               This overrides default behavior of searching the PATH for Perl.
 #
-#   Tested versions (to be extended)
-#     OmniOSCE 151022 LTS (Perl 5.24.1)
+# Parameter:
+#    target	Optional string containing desired Perl module, (e.g., Media::Scan)
+#		The default behavior is to build all necessary modules based on
+#		the OS and Perl version.
 #
-# Perl 5.12.4/5.14.1 note:
-#   You should build 5.12.4 using perlbrew and the following command. GCC's stack protector must be disabled
-#   so the binaries will not be dynamically linked to libssp.so which is not available on some distros.
-#   NOTE: On 32-bit systems for 5.12 and higher, -D use64bitint should be used. Debian Wheezy (the next release) will
-#   use Perl 5.12.4 with use64bitint enabled, and hopefully other major distros will follow suit.
-#
-#     perlbrew install perl-5.12.4 -D usethreads -D use64bitint -A ccflags=-fno-stack-protector -A ldflags=-fno-stack-protector
-#
-#   For 64-bit native systems, use:
-#
-#     perlbrew install perl-5.12.4 -D usethreads -A ccflags=-fno-stack-protector -A ldflags=-fno-stack-protector
-#
-
+################################################################################
+# Initial values prior to argument parsing
 # Require modules to pass tests
 RUN_TESTS=1
 USE_HINTS=1
@@ -54,7 +40,7 @@ $0 [args] [target]
 -h            this help
 -c            do not run make clean
 -i <lmsbase>  install modules in lmsbase directory
--p <perlbin > set custom perl binary
+-p <perlbin > set custom perl binary (other than one in PATH)
 -r            do not rename all x86 archs to "i386"
 -t            do not run tests
 
@@ -164,6 +150,7 @@ if [ "$OS" = "FreeBSD" ]; then
     export CPP=$GPP
 fi
 
+# Check for other pre-requisites
 for i in $GCC $GXX rsync make ; do
     which $i > /dev/null
     if [ $? -ne 0 ] ; then
